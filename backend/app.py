@@ -1054,11 +1054,14 @@ def handle_subscribe(data):
     emit('subscribed', {'room': room})
 
 if __name__ == '__main__':
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    
     print("=" * 50)
     print("  IDFace Sistema de Presença")
     print("=" * 50)
-    print(f"\n  API Server: http://localhost:5000")
-    print(f"  WebSocket: ws://localhost:5000")
+    print(f"\n  API Server: http://localhost:{port}")
+    print(f"  WebSocket: ws://localhost:{port}")
     print(f"\n  Endpoints principais:")
     print(f"  - GET  /api/users - Listar usuários")
     print(f"  - POST /api/users - Cadastrar usuário")
@@ -1069,4 +1072,4 @@ if __name__ == '__main__':
     print("=" * 50)
     
     start_polling()
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)

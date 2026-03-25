@@ -1,0 +1,23 @@
+[build]
+  builder = "paketo-buildpacks/python"
+
+[env]
+  PORT = "8080"
+
+[deploy]
+  release_command = "pip install -r requirements.txt"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    port = 80
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
