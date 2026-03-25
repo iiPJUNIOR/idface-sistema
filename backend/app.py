@@ -890,9 +890,27 @@ def push_server_catchall(subpath):
     
     return jsonify({"success": True})
 
+@app.route('/push_server.fcgi/push', methods=['GET', 'POST'])
+def push_server_push():
+    device_id = request.args.get('deviceId')
+    uuid = request.args.get('uuid')
+    print(f"[IDFace Push] Push received - deviceId: {device_id}, uuid: {uuid}")
+    return jsonify({"success": True, "code": 0})
+
+@app.route('/push_server.fcgi/result', methods=['POST'])
+def push_server_result():
+    device_id = request.args.get('deviceId')
+    uuid = request.args.get('uuid')
+    endpoint = request.args.get('endpoint', '')
+    
+    data = request.json or {}
+    print(f"[IDFace Result] Received: {data}")
+    
+    return jsonify({"success": True, "code": 0})
+
 @app.route('/push_server.fcgi', methods=['POST'])
 def push_server_callback():
-    data = request.json
+    data = request.json or {}
     print(f"[Push Server] Received: {data}")
     
     user_id = data.get('user_id')
