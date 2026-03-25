@@ -895,18 +895,66 @@ def push_server_push():
     device_id = request.args.get('deviceId')
     uuid = request.args.get('uuid')
     print(f"[IDFace Push] Push received - deviceId: {device_id}, uuid: {uuid}")
-    return jsonify({"success": True, "code": 0})
+    return jsonify({"code": 0, "endpoint": "/push_server.fcgi/result"})
 
 @app.route('/push_server.fcgi/result', methods=['POST'])
 def push_server_result():
     device_id = request.args.get('deviceId')
     uuid = request.args.get('uuid')
-    endpoint = request.args.get('endpoint', '')
     
-    data = request.json or {}
-    print(f"[IDFace Result] Received: {data}")
+    data = {}
+    try:
+        data = request.get_json(force=True) or {}
+    except:
+        pass
     
-    return jsonify({"success": True, "code": 0})
+    print(f"[IDFace Result] Received data: {data}")
+    
+    user_id = data.get('user_id') or data.get('userId')
+    event = data.get('event') or data.get('type')
+    
+    if user_id:
+        recognition_data = {
+            "user_id": int(user_id) if user_id else None,
+            "event_type": int(event) if event else 7,
+            "name": "",
+            "registration": "",
+            "active": False,
+            "timestamp": datetime.now().isoformat(),
+            "created_at": datetime.now().isoformat()
+        }
+        
+        user = db.get_user_by_cpf(str(user_id))
+        if not user:
+            user = db.get_user_by_idface_id(user_id)
+        if not user:
+            user = db.get_user_by_registration(str(user_id))
+        
+        if user:
+            recognition_data["user_id"] = user['id']
+            recognition_data["name"] = user['name']
+            recognition_data["registration"] = user['registration']
+            recognition_data["active"] = bool(user.get('active', 0)) == 1
+            recognition_data["event_description"] = "Face reconhecida"
+            
+            if recognition_data["active"]:
+                db.add_presence_log(
+                    user_id=user['id'],
+                    idface_id=str(user_id),
+                    device_id=device_id,
+                    identifier_type="face",
+                    result=7,
+                    timestamp=int(time.time())
+                )
+                socketio.emit('presence_detected', format_presence_for_response({**user, "timestamp": datetime.now().isoformat(), "created_at": datetime.now().isoformat()}), room='admin')
+        else:
+            recognition_data["name"] = "Não Reconhecido"
+            recognition_data["not_recognized"] = True
+            recognition_data["event_description"] = "Face não reconhecida"
+        
+        socketio.emit('recognition_detected', recognition_data, room='admin')
+    
+    return jsonify({"code": 0, "endpoint": "/push_server.fcgi/result"})
 
 @app.route('/push_server.fcgi', methods=['POST'])
 def push_server_callback():
