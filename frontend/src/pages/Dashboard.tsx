@@ -141,7 +141,10 @@ export function Dashboard() {
               </div>
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-indigo-300 tracking-tight">iDFace</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-indigo-300 tracking-tight">iDFace</h1>
+                <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[9px] sm:text-[10px] font-bold tracking-widest border border-emerald-500/20">v1.1.0</span>
+              </div>
               <p className="text-xs sm:text-sm font-semibold text-emerald-500/80 uppercase tracking-widest mt-0.5">Control Center</p>
             </div>
           </div>
