@@ -128,6 +128,18 @@ class DatabaseSupabase:
     
     def clear_all_users(self):
         self._request('DELETE', 'users?id=gt.0')
+    
+    def get_recent_presence(self, limit: int = 50):
+        result = self._request('GET', f"presence_logs?order=timestamp.desc&limit={limit}")
+        return result or []
+    
+    def get_presence_by_date(self, date: str):
+        result = self._request('GET', f"presence_logs?timestamp=like.{date}*&order=timestamp.desc")
+        return result or []
+    
+    def get_all_users(self):
+        result = self._request('GET', 'users?order=created_at.desc')
+        return result or []
 
 
 # Instância global

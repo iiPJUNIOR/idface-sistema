@@ -131,7 +131,7 @@ export function Dashboard() {
       <div className="fixed inset-0 z-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-slate-950 to-emerald-900/10 mix-blend-screen"></div>
 
       {/* Header */}
-      <header className="relative sm:sticky top-0 z-40 w-full glass-panel border-b border-white/5 shadow-2xl shadow-black/50 bg-slate-950/80 backdrop-blur-xl">
+      <header className="relative z-40 w-full glass-panel border-b border-white/5 shadow-2xl shadow-black/50 bg-slate-950/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 sm:gap-5 group cursor-pointer">
             <div className="relative">
@@ -143,7 +143,7 @@ export function Dashboard() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-indigo-300 tracking-tight">iDFace</h1>
-                <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[9px] sm:text-[10px] font-bold tracking-widest border border-emerald-500/20">v1.1.0</span>
+                <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[9px] sm:text-[10px] font-bold tracking-widest border border-emerald-500/20">v1.1.3</span>
               </div>
               <p className="text-xs sm:text-sm font-semibold text-emerald-500/80 uppercase tracking-widest mt-0.5">Control Center</p>
             </div>
@@ -213,17 +213,46 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* Tab Layout */}
+        {/* Search & Actions - Top Global Toolbar */}
+        <div className="glass-panel rounded-2xl sm:rounded-3xl border border-white/5 p-4 sm:p-5 shadow-2xl bg-slate-900/40 relative z-20 mb-6">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 sm:gap-6">
+            <div className="relative flex-1 w-full max-w-xl group shrink-0">
+              <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none">
+                <Search className="w-5 h-5 sm:w-6 sm:h-6 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+              </div>
+              <input type="text" placeholder="Nome, Matrícula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 sm:pl-14 pr-4 sm:pr-6 py-3 sm:py-4 bg-slate-950/80 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-medium text-base sm:text-lg shadow-inner" />
+            </div>
+            <div className="flex w-full lg:w-auto overflow-x-auto sm:flex-wrap items-center gap-3 sm:gap-4 pb-2 sm:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x shrink-0">
+              <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start p-3 sm:p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
+                <RefreshCw className={`w-5 h-5 sm:w-6 sm:h-6 text-slate-300 group-hover:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} usuários importados do IDFace`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                <Download className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">IDFace</span>
+              </button>
+              <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados, ${result.error_count} erros`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Pendentes</span>
+              </button>
+              <button onClick={() => setShowImportModal(true)} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Importar CSV</span>
+              </button>
+              <button onClick={() => openModal()} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                <Plus className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Novo Ativo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Layout Container */}
         <div className="glass-panel rounded-2xl sm:rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl flex flex-col min-h-[600px] relative">
           {/* Tab Headers */}
-          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/5 bg-slate-900/60 backdrop-blur-3xl relative sm:sticky top-0 sm:top-[88px] z-20 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/5 bg-slate-900/60 backdrop-blur-3xl relative z-20 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {[
               { id: 'users', icon: Users, label: 'Central de Usuários', shortLabel: 'Usuários' },
               { id: 'logs', icon: Fingerprint, label: 'Reconhecimentos em Tempo Real', shortLabel: 'Logs' },
               { id: 'presence', icon: Clock, label: 'Feed de Acessos Real-Time', shortLabel: 'Acessos' }
             ].map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-5 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none focus:ring-2 focus:ring-emerald-500/50 inset-0 border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
-                <tab.icon className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-5 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg transition-colors flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
+                <tab.icon className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 transition-colors ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
                 <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
                 <span className="sm:hidden whitespace-nowrap">{tab.shortLabel}</span>
               </button>
@@ -233,39 +262,12 @@ export function Dashboard() {
           {/* Tab Content */}
           <div className="p-4 sm:p-8 flex-1 bg-slate-950/40 relative">
             {activeTab === 'users' ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards">
-                {/* Search & Actions */}
-                <div className="flex flex-col xl:flex-row items-center justify-between gap-6">
-                  <div className="relative flex-1 w-full max-w-xl group shrink-0">
-                    <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none">
-                      <Search className="w-5 h-5 sm:w-6 sm:h-6 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
-                    </div>
-                    <input type="text" placeholder="Nome, Matrícula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 sm:pl-14 pr-4 sm:pr-6 py-3 sm:py-4 bg-slate-900/80 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-medium text-base sm:text-lg shadow-inner" />
-                  </div>
-                  <div className="flex w-full xl:w-auto overflow-x-auto sm:flex-wrap items-center gap-3 sm:gap-4 pb-2 sm:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x shrink-0">
-                    <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start p-3 sm:p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
-                      <RefreshCw className={`w-5 h-5 sm:w-6 sm:h-6 text-slate-300 group-hover:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} usuários importados do IDFace`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
-                      <Download className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">IDFace</span>
-                    </button>
-                    <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados, ${result.error_count} erros`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
-                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Pendentes</span>
-                    </button>
-                    <button onClick={() => setShowImportModal(true)} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
-                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Importar CSV</span>
-                    </button>
-                    <button onClick={() => openModal()} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
-                      <Plus className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Novo Ativo</span>
-                    </button>
-                  </div>
-                </div>
-
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards">
                 {/* Grid */}
                 {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).map(user => {
-                      const photoUrl = user.photo_url ? `http://localhost:5000${user.photo_url}?t=${Date.now()}` : '';
+                      const photoUrl = user.photo_url ? `http://localhost:5000${user.photo_url}` : '';
                       return (
                         <UserRow key={user.id} user={user} photoUrl={photoUrl} onToggleStatus={handleToggleStatus} onEdit={openModal} onDelete={handleDelete} onUserUpdated={loadData} />
                       );
