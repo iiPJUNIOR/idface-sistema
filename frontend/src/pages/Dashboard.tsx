@@ -245,14 +245,14 @@ export function Dashboard() {
         {/* Tab Layout Container */}
         <div className="glass-panel rounded-2xl sm:rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl flex flex-col min-h-[600px] relative">
           {/* Tab Headers */}
-          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/5 bg-slate-900/60 backdrop-blur-3xl relative z-20 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/5 relative z-20 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {[
               { id: 'users', icon: Users, label: 'Central de Usuários', shortLabel: 'Usuários' },
               { id: 'logs', icon: Fingerprint, label: 'Reconhecimentos em Tempo Real', shortLabel: 'Logs' },
               { id: 'presence', icon: Clock, label: 'Feed de Acessos Real-Time', shortLabel: 'Acessos' }
             ].map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-5 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg transition-colors flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
-                <tab.icon className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 transition-colors ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-5 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
+                <tab.icon className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
                 <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
                 <span className="sm:hidden whitespace-nowrap">{tab.shortLabel}</span>
               </button>
