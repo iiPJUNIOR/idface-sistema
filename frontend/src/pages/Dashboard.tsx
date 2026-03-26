@@ -132,21 +132,21 @@ export function Dashboard() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/5 shadow-2xl shadow-black/50">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-5 group cursor-pointer">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 sm:gap-5 group cursor-pointer">
             <div className="relative">
               <div className="absolute inset-0 bg-emerald-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity animate-pulse-glow"></div>
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-indigo-500 rounded-2xl flex items-center justify-center relative shadow-inner shadow-white/20 border border-white/20 group-hover:scale-105 transition-transform duration-300">
-                <Fingerprint className="w-8 h-8 text-white drop-shadow-md" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-emerald-400 to-indigo-500 rounded-2xl flex items-center justify-center relative shadow-inner shadow-white/20 border border-white/20 group-hover:scale-105 transition-transform duration-300">
+                <Fingerprint className="w-6 h-6 sm:w-8 sm:h-8 text-white drop-shadow-md" />
               </div>
             </div>
             <div>
-              <h1 className="text-3xl font-heading font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-indigo-300 tracking-tight">iDFace</h1>
-              <p className="text-sm font-semibold text-emerald-500/80 uppercase tracking-widest mt-0.5">Control Center</p>
+              <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-indigo-300 tracking-tight">iDFace</h1>
+              <p className="text-xs sm:text-sm font-semibold text-emerald-500/80 uppercase tracking-widest mt-0.5">Control Center</p>
             </div>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 px-5 py-2.5 glass-card rounded-full border-white/5 shadow-inner">
+          <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto justify-center sm:justify-end flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 glass-card rounded-full border-white/5 shadow-inner">
               <span className="relative flex h-3 w-3">
                 {idfaceStatus.connected || isConnected ? (
                   <><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_10px_2px_rgba(16,185,129,0.5)]"></span></>
@@ -154,21 +154,21 @@ export function Dashboard() {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 shadow-[0_0_10px_2px_rgba(244,63,94,0.5)]"></span>
                 )}
               </span>
-              <span className="text-sm font-semibold tracking-wide uppercase text-slate-300">
+              <span className="text-xs sm:text-sm font-semibold tracking-wide uppercase text-slate-300">
                 Data Hub {idfaceStatus.connected || isConnected ? <span className="text-emerald-400 ml-1">Online</span> : <span className="text-rose-400 ml-1">Offline</span>}
               </span>
             </div>
-            <button onClick={() => api.openDoor(0)} className="group relative flex items-center gap-3 px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/30 overflow-hidden isolate">
+            <button onClick={() => api.openDoor(0)} className="group relative flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/30 overflow-hidden isolate flex-1 sm:flex-none justify-center">
               <span className="absolute inset-0 bg-gradient-to-r from-teal-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity -z-10"></span>
-              <DoorOpen className="w-5 h-5 text-emerald-50 group-hover:scale-110 transition-transform" />
-              <span className="text-white drop-shadow-sm tracking-wide">Desbloquear</span>
+              <DoorOpen className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-50 group-hover:scale-110 transition-transform" />
+              <span className="text-white text-sm sm:text-base drop-shadow-sm tracking-wide">Desbloquear</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="w-full max-w-7xl px-6 py-10 relative z-10 space-y-8 flex-1">
+      <main className="w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-10 relative z-10 space-y-6 sm:space-y-8 flex-1">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative">
           <button onClick={() => setShowList(showList === 'all' ? null : 'all')} className="text-left">
@@ -194,13 +194,13 @@ export function Dashboard() {
                 <p className="text-slate-500 text-center py-8">Nenhum usuário nesta categoria</p>
               ) : (
                 currentList.map(user => (
-                  <div key={user.id} className="flex items-center gap-4 p-3 bg-slate-800/50 rounded-xl">
-                    <img src={api.getUserPhotoUrl(user.id)} alt={user.name} className="w-10 h-10 rounded-full object-cover bg-slate-700" />
-                    <div className="flex-1">
-                      <p className="font-semibold text-white">{user.name}</p>
-                      <p className="text-sm text-slate-400">Matrícula: {user.registration}</p>
+                  <div key={user.id} className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 bg-slate-800/50 rounded-xl">
+                    <img src={api.getUserPhotoUrl(user.id)} alt={user.name} className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full object-cover bg-slate-700" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm sm:text-base text-white truncate">{user.name}</p>
+                      <p className="text-xs sm:text-sm text-slate-400 truncate">Matrícula: {user.registration}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${user.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                    <span className={`px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold shrink-0 ${user.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                       {user.active ? 'ATIVO' : 'INATIVO'}
                     </span>
                   </div>
@@ -213,47 +213,47 @@ export function Dashboard() {
         {/* Tab Layout */}
         <div className="glass-panel rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl flex flex-col min-h-[600px] relative">
           {/* Tab Headers */}
-          <div className="flex border-b border-white/5 bg-slate-900/60 backdrop-blur-3xl sticky top-0 z-20">
+          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/5 bg-slate-900/60 backdrop-blur-3xl sticky top-[80px] sm:top-[90px] z-20 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             {[
-              { id: 'users', icon: Users, label: 'Central de Usuários' },
-              { id: 'logs', icon: Fingerprint, label: 'Reconhecimentos em Tempo Real' },
-              { id: 'presence', icon: Clock, label: 'Feed de Acessos Real-Time' }
+              { id: 'users', icon: Users, label: 'Central de Usuários', shortLabel: 'Usuários' },
+              { id: 'logs', icon: Fingerprint, label: 'Reconhecimentos em Tempo Real', shortLabel: 'Logs' },
+              { id: 'presence', icon: Clock, label: 'Feed de Acessos Real-Time', shortLabel: 'Acessos' }
             ].map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence')} className={`flex-1 py-6 font-heading font-semibold text-lg transition-all flex items-center justify-center gap-3 relative focus:outline-none focus:ring-2 focus:ring-emerald-500/50 inset-0 ${activeTab === tab.id ? 'text-white' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
-                <tab.icon className={`w-6 h-6 ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
-                {tab.label}
-                {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-t-full shadow-[0_-2px_10px_rgba(52,211,153,0.5)]"></div>}
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-4 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none focus:ring-2 focus:ring-emerald-500/50 inset-0 border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
+                <tab.icon className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
+                <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
+                <span className="sm:hidden whitespace-nowrap">{tab.shortLabel}</span>
               </button>
             ))}
           </div>
 
           {/* Tab Content */}
-          <div className="p-8 flex-1 bg-slate-950/40 relative">
+          <div className="p-4 sm:p-8 flex-1 bg-slate-950/40 relative">
             {activeTab === 'users' ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards">
                 {/* Search & Actions */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div className="relative flex-1 max-w-xl group">
-                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                      <Search className="w-6 h-6 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
+                <div className="flex flex-col xl:flex-row items-center justify-between gap-6">
+                  <div className="relative flex-1 w-full max-w-xl group">
+                    <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none">
+                      <Search className="w-5 h-5 sm:w-6 sm:h-6 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
                     </div>
-                    <input type="text" placeholder="Nome, Matrícula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-14 pr-6 py-4 bg-slate-900/80 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-medium text-lg shadow-inner" />
+                    <input type="text" placeholder="Nome, Matrícula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 sm:pl-14 pr-4 sm:pr-6 py-3 sm:py-4 bg-slate-900/80 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-medium text-base sm:text-lg shadow-inner" />
                   </div>
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
-                      <RefreshCw className={`w-6 h-6 text-slate-300 group-hover:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
+                  <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-4 w-full xl:w-auto">
+                    <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="p-3 sm:p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
+                      <RefreshCw className={`w-5 h-5 sm:w-6 sm:h-6 text-slate-300 group-hover:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} usuários importados do IDFace`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide">
-                      <Download className="w-6 h-6" /> Importar IDFace
+                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} usuários importados do IDFace`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide text-xs sm:text-base">
+                      <Download className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="hidden sm:inline">Importar IDFace</span><span className="sm:hidden">IDFace</span>
                     </button>
-                    <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados, ${result.error_count} erros`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide">
-                      <Upload className="w-6 h-6" /> Forçar Pendentes
+                    <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados, ${result.error_count} erros`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide text-xs sm:text-base">
+                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="hidden sm:inline">Forçar Pendentes</span><span className="sm:hidden">Pendentes</span>
                     </button>
-                    <button onClick={() => setShowImportModal(true)} className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 text-white tracking-wide">
-                      <Upload className="w-6 h-6" /> Importar CSV
+                    <button onClick={() => setShowImportModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 text-white tracking-wide text-xs sm:text-base">
+                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="hidden sm:inline">Importar CSV</span><span className="sm:hidden">CSV</span>
                     </button>
-                    <button onClick={() => openModal()} className="flex items-center gap-3 px-8 py-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 text-white tracking-wide">
-                      <Plus className="w-6 h-6" /> Novo Ativo
+                    <button onClick={() => openModal()} className="w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                      <Plus className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Novo Ativo
                     </button>
                   </div>
                 </div>
@@ -305,17 +305,17 @@ export function Dashboard() {
                       const Icon = rec.active ? CheckCircle : AlertCircle;
                       
                       return (
-                        <div key={idx} className={`flex items-center gap-4 p-4 rounded-2xl border ${bgColor} ${borderColor}`}>
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBg}`}>
-                            <Icon className={`w-6 h-6 ${iconColor}`} />
+                        <div key={idx} className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border ${bgColor} ${borderColor}`}>
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl flex items-center justify-center ${iconBg}`}>
+                            <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${iconColor}`} />
                           </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-white">{rec.name}</p>
-                            <p className="text-sm text-slate-400">Matrícula: {rec.registration || 'N/A'} {rec.user_id ? `(ID: ${rec.user_id})` : ''}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm sm:text-base text-white truncate">{rec.name}</p>
+                            <p className="text-xs sm:text-sm text-slate-400 truncate">Matrícula: {rec.registration || 'N/A'} {rec.user_id ? `(ID: ${rec.user_id})` : ''}</p>
                           </div>
-                          <div className="text-right">
-                            <p className={`font-bold ${statusColor}`}>{statusText}</p>
-                            <p className="text-xs text-slate-500">{new Date(rec.created_at).toLocaleTimeString('pt-BR')}</p>
+                          <div className="text-right shrink-0">
+                            <p className={`font-bold text-xs sm:text-sm ${statusColor}`}>{statusText}</p>
+                            <p className="text-[10px] sm:text-xs text-slate-500">{new Date(rec.created_at).toLocaleTimeString('pt-BR')}</p>
                           </div>
                         </div>
                       );
@@ -338,11 +338,11 @@ export function Dashboard() {
       {showImportModal && <ImportUsersModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onImportComplete={loadData} />}
       
       {notification && (
-        <div className={`fixed bottom-8 right-8 px-6 py-4 rounded-2xl flex items-center gap-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] z-[100] animate-slideUp border border-white/10 ${notification.type === 'success' ? 'bg-gradient-to-r from-emerald-600 to-teal-700' : 'bg-gradient-to-r from-rose-600 to-pink-700'}`}>
-          <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-             {notification.type === 'success' ? <CheckCircle className="w-6 h-6 text-white" /> : <AlertCircle className="w-6 h-6 text-white" />}
+        <div className={`fixed bottom-4 left-4 right-4 sm:bottom-8 sm:left-auto sm:right-8 sm:w-auto px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex items-center gap-3 sm:gap-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] z-[100] animate-slideUp border border-white/10 ${notification.type === 'success' ? 'bg-gradient-to-r from-emerald-600 to-teal-700' : 'bg-gradient-to-r from-rose-600 to-pink-700'}`}>
+          <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm shrink-0">
+             {notification.type === 'success' ? <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" /> : <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />}
           </div>
-          <span className="font-heading font-semibold text-lg text-white tracking-wide">{notification.message}</span>
+          <span className="font-heading font-semibold text-sm sm:text-lg text-white tracking-wide">{notification.message}</span>
         </div>
       )}
 

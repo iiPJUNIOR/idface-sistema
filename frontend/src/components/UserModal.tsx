@@ -20,22 +20,22 @@ interface UserModalProps {
 
 export function UserModal({ editingUser, formData, setFormData, setShowCamera, closeModal, handleSubmit, loading }: UserModalProps) {
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center z-50 p-4 transition-all duration-300">
-      <div className="bg-slate-900 rounded-3xl w-full max-w-md border border-white/10 shadow-2xl relative overflow-hidden animate-float-up">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center z-[60] p-4 transition-all duration-300">
+      <div className="bg-slate-900 rounded-3xl w-full max-w-md max-h-[100dvh] flex flex-col border border-white/10 shadow-2xl relative animate-float-up">
         {/* Glow effect */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none hidden sm:block"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none hidden sm:block"></div>
 
-        <div className="p-6 border-b border-white/5 flex items-center justify-between relative z-10">
-          <h3 className="text-2xl font-heading font-bold text-white tracking-tight">
+        <div className="p-5 sm:p-6 border-b border-white/5 flex items-center justify-between relative z-10 shrink-0">
+          <h3 className="text-xl sm:text-2xl font-heading font-bold text-white tracking-tight">
             {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
           </h3>
-          <button onClick={closeModal} className="p-2.5 bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-xl transition-colors text-slate-400">
+          <button onClick={closeModal} type="button" className="p-2 sm:p-2.5 bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-xl transition-colors text-slate-400">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 relative z-10">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 sm:space-y-6 relative z-10 overflow-y-auto min-h-0">
           <div className="flex justify-center mb-2">
             <div
               onClick={() => setShowCamera(true)}
