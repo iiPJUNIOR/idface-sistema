@@ -1,5 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://qtqofigtjlykzksexvmf.supabase.co/rest/v1/$1" }
+    { "source": "/api/(.*)", "destination": "https://iiiPJUNIOR.pythonanywhere.com/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
