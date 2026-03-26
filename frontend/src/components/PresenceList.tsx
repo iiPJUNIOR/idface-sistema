@@ -4,12 +4,12 @@ import { Clock, CheckCircle } from 'lucide-react';
 export function PresenceList({ presence }: { presence: Presence[] }) {
   if (presence.length === 0) {
     return (
-      <div className="text-center py-20 glass-card rounded-3xl">
-        <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner animate-pulse">
-          <Clock className="w-12 h-12 text-indigo-400/50" />
+      <div className="text-center py-10 sm:py-20 px-4 glass-card rounded-2xl sm:rounded-3xl">
+        <div className="w-16 h-16 sm:w-24 sm:h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-inner animate-pulse">
+          <Clock className="w-8 h-8 sm:w-12 sm:h-12 text-indigo-400/50" />
         </div>
-        <p className="text-xl font-heading font-semibold text-slate-300 mb-2">Sem registros</p>
-        <p className="text-slate-500">Aguardando marcações de presença para hoje.</p>
+        <p className="text-lg sm:text-xl font-heading font-semibold text-slate-300 mb-2">Sem registros</p>
+        <p className="text-sm sm:text-base text-slate-500 text-balance">Aguardando marcações de presença para hoje.</p>
       </div>
     );
   }

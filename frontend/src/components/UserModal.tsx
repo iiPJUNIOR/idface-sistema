@@ -83,12 +83,12 @@ export function UserModal({ editingUser, formData, setFormData, setShowCamera, c
             </div>
           </div>
 
-          <div className="flex gap-4 pt-4 mt-8 border-t border-white/5">
-            <button type="button" onClick={closeModal} className="flex-1 px-5 py-3.5 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded-2xl transition-all text-slate-300 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500">
+          <div className="flex gap-3 sm:gap-4 pt-4 mt-6 sm:mt-8 border-t border-white/5">
+            <button type="button" onClick={closeModal} className="flex-1 px-3 sm:px-5 py-3 sm:py-3.5 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded-2xl transition-all text-slate-300 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 text-sm sm:text-base">
               Cancelar
             </button>
-            <button type="submit" disabled={loading} className="flex-1 px-5 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-lg shadow-emerald-500/20 rounded-2xl font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 tracking-wide text-lg">
-              {loading ? 'Processando...' : editingUser ? 'Atualizar' : 'Cadastrar'}
+            <button type="submit" disabled={loading} className="flex-1 px-3 sm:px-5 py-3 sm:py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-lg shadow-emerald-500/20 rounded-2xl font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 tracking-wide text-sm sm:text-lg">
+              {loading ? 'Process...' : editingUser ? 'Atualizar' : 'Cadastrar'}
             </button>
           </div>
         </form>

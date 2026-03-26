@@ -145,19 +145,19 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
           <canvas ref={canvasRef} className="hidden" />
         </div>
 
-        <div className="p-4 flex gap-3 justify-end">
+        <div className="p-4 flex flex-col sm:flex-row gap-3 sm:justify-end">
           {capturedPhoto ? (
             <>
               <button
                 onClick={retakePhoto}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2"
+                className="w-full sm:w-auto justify-center px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 Tirar outra
               </button>
               <button
                 onClick={confirmPhoto}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                className="w-full sm:w-auto justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
               >
                 <Check className="w-4 h-4" />
                 Usar foto
@@ -167,7 +167,7 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
             <button
               onClick={capturePhoto}
               disabled={!stream || loading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="w-full sm:w-auto justify-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Camera className="w-4 h-4" />
               Capturar

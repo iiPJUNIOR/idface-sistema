@@ -120,18 +120,18 @@ export function ImportUsersModal({ isOpen, onClose, onImportComplete }: ImportUs
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-white/10">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="text-xl font-semibold text-white">Importar Cadastros</h2>
-          <button onClick={handleClose} className="text-slate-400 hover:text-white">
+      <div className="bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-white/10 mx-4 sm:mx-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10 shrink-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Importar Cadastros</h2>
+          <button onClick={handleClose} className="text-slate-400 hover:text-white shrink-0 p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="p-4 sm:p-6 overflow-y-auto min-h-0">
           {!file && (
             <div className="space-y-4">
-              <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer bg-slate-900/50"
+              <div className="border-2 border-dashed border-slate-600 rounded-lg p-5 sm:p-8 text-center hover:border-blue-500 transition-colors cursor-pointer bg-slate-900/50"
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onClick={() => fileInputRef.current?.click()}
@@ -143,14 +143,14 @@ export function ImportUsersModal({ isOpen, onClose, onImportComplete }: ImportUs
                   className="hidden"
                   onChange={handleFileChange}
                 />
-                <Upload className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                <p className="text-slate-300 mb-2">
-                  Arraste um arquivo CSV ou clique para selecionar
+                <Upload className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-slate-400 mb-4" />
+                <p className="text-sm sm:text-base text-slate-300 mb-2">
+                  Arraste um CSV ou clique para selecionar
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="text-xs sm:text-sm text-slate-500">
                   Separador: ponto e vírgula (;)
                 </p>
-              <div className="mt-2 p-3 bg-slate-950 rounded text-xs font-mono text-slate-300">
+              <div className="mt-4 p-3 bg-slate-950 rounded text-xs font-mono text-slate-300 text-left overflow-x-auto">
                 <div className="font-bold text-slate-200">name;registration;cpf</div>
                 <div>João Silva;12345;12345678901</div>
                 <div>Maria Santos;12346;</div>
@@ -158,10 +158,10 @@ export function ImportUsersModal({ isOpen, onClose, onImportComplete }: ImportUs
               </div>
               <button
                 onClick={downloadTemplate}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-blue-400 hover:text-blue-300 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-blue-400 hover:text-blue-300 transition-colors text-sm sm:text-base"
               >
-                <Download className="w-4 h-4" />
-                Baixar modelo de arquivo CSV
+                <Download className="w-4 h-4 shrink-0" />
+                Baixar modelo CSV
               </button>
             </div>
           )}
@@ -187,8 +187,8 @@ export function ImportUsersModal({ isOpen, onClose, onImportComplete }: ImportUs
                 </button>
               </div>
 
-              <div className="max-h-64 overflow-y-auto border border-slate-700 rounded-lg">
-                <table className="w-full text-sm">
+              <div className="max-h-64 overflow-auto border border-slate-700 rounded-lg">
+                <table className="w-full text-sm min-w-[300px]">
                   <thead className="bg-slate-900 sticky top-0">
                     <tr>
                       <th className="px-4 py-2 text-left text-slate-400">Nome</th>
@@ -208,17 +208,17 @@ export function ImportUsersModal({ isOpen, onClose, onImportComplete }: ImportUs
                 </table>
               </div>
 
-              <div className="flex justify-end gap-3 mt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-4">
                 <button
                   onClick={handleClose}
-                  className="px-4 py-2 text-slate-400 hover:text-white"
+                  className="w-full sm:w-auto px-4 py-2 text-slate-400 hover:text-white bg-white/5 sm:bg-transparent rounded-lg sm:rounded-none"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleImport}
                   disabled={isImporting}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isImporting ? (
                     <>
@@ -228,7 +228,7 @@ export function ImportUsersModal({ isOpen, onClose, onImportComplete }: ImportUs
                   ) : (
                     <>
                       <Upload className="w-4 h-4" />
-                      Importar {parsedUsers.length} usuários
+                      Importar {parsedUsers.length}
                     </>
                   )}
                 </button>
@@ -248,8 +248,8 @@ export function ImportUsersModal({ isOpen, onClose, onImportComplete }: ImportUs
                 </span>
               </div>
 
-              <div className="max-h-64 overflow-y-auto border border-slate-700 rounded-lg">
-                <table className="w-full text-sm">
+              <div className="max-h-64 overflow-auto border border-slate-700 rounded-lg">
+                <table className="w-full text-sm min-w-[400px]">
                   <thead className="bg-slate-900 sticky top-0">
                     <tr>
                       <th className="px-4 py-2 text-left text-slate-400">Status</th>

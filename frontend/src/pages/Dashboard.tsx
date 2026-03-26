@@ -131,7 +131,7 @@ export function Dashboard() {
       <div className="fixed inset-0 z-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-slate-950 to-emerald-900/10 mix-blend-screen"></div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/5 shadow-2xl shadow-black/50">
+      <header className="relative sm:sticky top-0 z-40 w-full glass-panel border-b border-white/5 shadow-2xl shadow-black/50 bg-slate-950/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 sm:gap-5 group cursor-pointer">
             <div className="relative">
@@ -182,12 +182,12 @@ export function Dashboard() {
 
         {/* Lista de usuários */}
         {showList && (
-          <div className="glass-panel rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">
+          <div className="glass-panel rounded-2xl sm:rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-4 sm:p-6 mb-4 sm:mb-8">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 className="text-lg sm:text-xl font-bold text-white shrink-0 mr-4">
                 {showList === 'all' ? 'Todos os Usuários' : showList === 'present' ? 'Usuários Presentes' : 'Usuários Faltantes'}
               </h3>
-              <button onClick={() => setShowList(null)} className="text-slate-400 hover:text-white">✕</button>
+              <button onClick={() => setShowList(null)} className="text-slate-400 hover:text-white shrink-0 p-2">✕</button>
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {currentList.length === 0 ? (
@@ -211,15 +211,15 @@ export function Dashboard() {
         )}
 
         {/* Tab Layout */}
-        <div className="glass-panel rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl flex flex-col min-h-[600px] relative">
+        <div className="glass-panel rounded-2xl sm:rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl flex flex-col min-h-[600px] relative">
           {/* Tab Headers */}
-          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/5 bg-slate-900/60 backdrop-blur-3xl sticky top-[80px] sm:top-[90px] z-20 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          <div className="flex overflow-x-auto overflow-y-hidden border-b border-white/5 bg-slate-900/60 backdrop-blur-3xl relative sm:sticky top-0 sm:top-[88px] z-20 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {[
               { id: 'users', icon: Users, label: 'Central de Usuários', shortLabel: 'Usuários' },
               { id: 'logs', icon: Fingerprint, label: 'Reconhecimentos em Tempo Real', shortLabel: 'Logs' },
               { id: 'presence', icon: Clock, label: 'Feed de Acessos Real-Time', shortLabel: 'Acessos' }
             ].map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-4 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none focus:ring-2 focus:ring-emerald-500/50 inset-0 border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-5 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none focus:ring-2 focus:ring-emerald-500/50 inset-0 border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
                 <tab.icon className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
                 <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
                 <span className="sm:hidden whitespace-nowrap">{tab.shortLabel}</span>
@@ -233,34 +233,34 @@ export function Dashboard() {
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-forwards">
                 {/* Search & Actions */}
                 <div className="flex flex-col xl:flex-row items-center justify-between gap-6">
-                  <div className="relative flex-1 w-full max-w-xl group">
+                  <div className="relative flex-1 w-full max-w-xl group shrink-0">
                     <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none">
                       <Search className="w-5 h-5 sm:w-6 sm:h-6 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
                     </div>
                     <input type="text" placeholder="Nome, Matrícula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 sm:pl-14 pr-4 sm:pr-6 py-3 sm:py-4 bg-slate-900/80 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-medium text-base sm:text-lg shadow-inner" />
                   </div>
-                  <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-4 w-full xl:w-auto">
-                    <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="p-3 sm:p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
+                  <div className="flex w-full xl:w-auto overflow-x-auto sm:flex-wrap items-center gap-3 sm:gap-4 pb-2 sm:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x shrink-0">
+                    <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start p-3 sm:p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
                       <RefreshCw className={`w-5 h-5 sm:w-6 sm:h-6 text-slate-300 group-hover:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} usuários importados do IDFace`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide text-xs sm:text-base">
-                      <Download className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="hidden sm:inline">Importar IDFace</span><span className="sm:hidden">IDFace</span>
+                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} usuários importados do IDFace`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                      <Download className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">IDFace</span>
                     </button>
-                    <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados, ${result.error_count} erros`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide text-xs sm:text-base">
-                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="hidden sm:inline">Forçar Pendentes</span><span className="sm:hidden">Pendentes</span>
+                    <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados, ${result.error_count} erros`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Pendentes</span>
                     </button>
-                    <button onClick={() => setShowImportModal(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 text-white tracking-wide text-xs sm:text-base">
-                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="hidden sm:inline">Importar CSV</span><span className="sm:hidden">CSV</span>
+                    <button onClick={() => setShowImportModal(true)} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                      <Upload className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Importar CSV</span>
                     </button>
-                    <button onClick={() => openModal()} className="w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
-                      <Plus className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> Novo Ativo
+                    <button onClick={() => openModal()} className="shrink-0 snap-start flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                      <Plus className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">Novo Ativo</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Grid */}
                 {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).map(user => {
                       const photoUrl = user.photo_url ? `http://localhost:5000${user.photo_url}?t=${Date.now()}` : '';
                       return (
@@ -269,14 +269,14 @@ export function Dashboard() {
                     })}
                   </div>
                 ) : (
-                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                      <div className="w-32 h-32 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 shadow-inner animate-pulse">
-                        <Users className="w-16 h-16 text-slate-600 relative z-10" />
+                   <div className="flex flex-col items-center justify-center py-10 sm:py-20 text-center px-4">
+                      <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-800/50 rounded-full flex items-center justify-center mb-4 sm:mb-6 shadow-inner animate-pulse">
+                        <Users className="w-12 h-12 sm:w-16 sm:h-16 text-slate-600 relative z-10" />
                       </div>
-                      <p className="text-3xl font-heading font-bold text-slate-300 mb-3 tracking-tight">Nenhuma entidade localizada</p>
-                      <p className="text-lg text-slate-500 max-w-sm mb-8">Refine a busca ou cadastre um novo acesso no sistema.</p>
+                      <p className="text-xl sm:text-3xl font-heading font-bold text-slate-300 mb-2 sm:mb-3 tracking-tight text-balance">Nenhuma entidade localizada</p>
+                      <p className="text-sm sm:text-lg text-slate-500 max-w-sm mb-6 sm:mb-8 text-balance">Refine a busca ou cadastre um novo acesso no sistema.</p>
                       {searchTerm === '' && (
-                        <button onClick={() => openModal()} className="px-8 py-4 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-2xl font-bold transition-colors">
+                        <button onClick={() => openModal()} className="px-6 sm:px-8 py-3 sm:py-4 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-2xl font-bold transition-colors text-sm sm:text-base">
                           <Plus className="w-5 h-5 inline mr-2" /> Iniciar Cadastro
                         </button>
                       )}
@@ -287,12 +287,12 @@ export function Dashboard() {
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="space-y-3">
                   {recognitions.length === 0 ? (
-                    <div className="text-center py-16">
-                      <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Fingerprint className="w-10 h-10 text-slate-600" />
+                    <div className="text-center py-10 sm:py-16 px-4">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                        <Fingerprint className="w-8 h-8 sm:w-10 sm:h-10 text-slate-600" />
                       </div>
-                      <p className="text-slate-500 text-lg">Aguardando reconhecimentos...</p>
-                      <p className="text-slate-600 text-sm mt-2">Os reconhecimentos aparecerão aqui em tempo real</p>
+                      <p className="text-slate-500 text-base sm:text-lg text-balance">Aguardando reconhecimentos...</p>
+                      <p className="text-slate-600 text-xs sm:text-sm mt-1 sm:mt-2 text-balance">Os reconhecimentos aparecerão aqui em tempo real</p>
                     </div>
                   ) : (
                     recognitions.map((rec, idx) => {

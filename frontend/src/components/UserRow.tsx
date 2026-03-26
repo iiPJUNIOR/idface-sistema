@@ -84,9 +84,9 @@ export function UserRow({ user, photoUrl, onToggleStatus, onEdit, onDelete, onUs
         </div>
       </div>
       
-      <div className="flex items-center gap-3 mt-5 pt-4 border-t border-white/5 opacity-80 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onToggleStatus(user)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all ${user.active ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400'}`}>
-          {user.active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+      <div className="flex items-center gap-2 sm:gap-3 mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-white/5 opacity-100 sm:opacity-80 sm:group-hover:opacity-100 transition-opacity">
+        <button onClick={() => onToggleStatus(user)} className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${user.active ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400'}`}>
+          {user.active ? <ToggleRight className="w-4 h-4 shrink-0" /> : <ToggleLeft className="w-4 h-4 shrink-0" />}
           {user.active ? 'Ativo' : 'Inativo'}
         </button>
         <button onClick={() => onEdit(user)} className="p-2 bg-white/5 hover:bg-emerald-500/20 rounded-xl text-slate-300 hover:text-emerald-400 transition-all shadow-sm">
