@@ -31,10 +31,16 @@ class Database:
                 photo_path TEXT,
                 photo_base64 TEXT,
                 active INTEGER DEFAULT 1,
+                sync_pending INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN sync_pending INTEGER DEFAULT 0')
+        except:
+            pass
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS presence_logs (
@@ -75,15 +81,16 @@ class Database:
         conn.close()
     
     def add_user(self, name: str, registration: str, cpf: str = None, 
-                 idface_id: str = None, photo_path: str = None, photo_base64: str = None) -> Dict[str, Any]:
+                 idface_id: str = None, photo_path: str = None, photo_base64: str = None,
+                 sync_pending: int = 0) -> Dict[str, Any]:
         conn = self.get_connection()
         cursor = conn.cursor()
         
         try:
             cursor.execute('''
-                INSERT INTO users (name, registration, cpf, idface_id, photo_path, photo_base64)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (name, registration, cpf or '', idface_id or '', photo_path or '', photo_base64 or ''))
+                INSERT INTO users (name, registration, cpf, idface_id, photo_path, photo_base64, sync_pending)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (name, registration, cpf or '', idface_id or '', photo_path or '', photo_base64 or '', sync_pending))
             
             conn.commit()
             user_id = cursor.lastrowid
@@ -103,7 +110,7 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        allowed_fields = ['name', 'registration', 'cpf', 'idface_id', 'photo_path', 'photo_base64', 'active']
+        allowed_fields = ['name', 'registration', 'cpf', 'idface_id', 'photo_path', 'photo_base64', 'active', 'sync_pending']
         updates = []
         values = []
         

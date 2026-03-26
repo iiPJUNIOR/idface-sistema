@@ -43,7 +43,11 @@ export function UserModal({ editingUser, formData, setFormData, setShowCamera, c
             >
               {formData.photo ? (
                 <>
-                  <img src={`data:image/jpeg;base64,${formData.photo}`} alt="Preview" className="w-full h-full object-cover" />
+                  <img 
+                    src={formData.photo.startsWith('http') ? formData.photo : `data:image/jpeg;base64,${formData.photo}`} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover" 
+                  />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center shadow-[inset_0_0_40px_rgba(0,0,0,0.8)]">
                     <Camera className="w-8 h-8 text-white" />
                     <span className="text-xs font-semibold text-white mt-2">Alterar</span>

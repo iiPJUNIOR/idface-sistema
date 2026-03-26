@@ -198,6 +198,30 @@ class IDFaceClient:
                 print(f"[IDFace] Usuário {user_id} removido com sucesso")
                 return {"success": True}
             else:
+                print(f"[IDFace] Erro ao remover: {data}")
+                return {"success": False, "error": data}
+                
+        except Exception as e:
+            print(f"[IDFace] Erro ao remover usuário: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def delete_user_alternative(self, registration: str) -> Dict[str, Any]:
+        url = f"{self._make_url('/destroy_objects.fcgi')}?{self._get_session_param()}"
+        
+        payload = {
+            "object": "users",
+            "where": [{"field": "registration", "value": registration}]
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            data = response.json()
+            
+            if data.get("changes", 0) > 0:
+                print(f"[IDFace] Usuário com registration {registration} removido")
+                return {"success": True}
+            else:
+                print(f"[IDFace] Nenhum usuário encontrado com registration {registration}")
                 return {"success": False, "error": data}
                 
         except Exception as e:
@@ -350,6 +374,18 @@ class IDFaceClient:
         except Exception as e:
             print(f"[IDFace] Erro ao listar usuários: {e}")
             return []
+    
+    def get_user_photo(self, user_id: int) -> Optional[bytes]:
+        url = f"{self._make_url('/user_get_image.fcgi')}?session={self.session}&user_id={user_id}"
+        
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200 and len(response.content) > 100:
+                return response.content
+            return None
+        except Exception as e:
+            print(f"[IDFace] Erro ao baixar foto: {e}")
+            return None
     
     def open_door(self, door: int = 0) -> Dict[str, Any]:
         if not self.session:

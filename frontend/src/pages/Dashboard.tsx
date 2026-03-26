@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, UserCheck, DoorOpen, Plus, Search, User, Clock, CheckCircle, AlertCircle, RefreshCw, Fingerprint } from 'lucide-react';
+import { Users, UserCheck, DoorOpen, Plus, Search, User, Clock, CheckCircle, AlertCircle, RefreshCw, Fingerprint, Upload, Download } from 'lucide-react';
 import { api } from '../services/api';
 import type { User as UserType, Presence } from '../services/api';
 import { useSocket } from '../hooks/useSocket';
@@ -8,6 +8,7 @@ import { StatCard } from '../components/StatCard';
 import { UserRow } from '../components/UserRow';
 import { UserModal } from '../components/UserModal';
 import { PresenceList } from '../components/PresenceList';
+import { ImportUsersModal } from '../components/ImportUsersModal';
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState<'users' | 'presence' | 'logs'>('users');
@@ -24,6 +25,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showList, setShowList] = useState<'all' | 'present' | 'absent' | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const handlePresenceDetected = useCallback((data: unknown) => {
     const presenceData = data as Presence;
@@ -41,14 +43,15 @@ export function Dashboard() {
     onPresenceDetected: handlePresenceDetected,
     onRecognitionDetected: handleRecognitionDetected,
     onUserDeleted: (data) => { setUsers((prev) => prev.filter((u) => u.id !== (data as { user_id: number }).user_id)); setStats((prev) => ({ ...prev, total_users: Math.max(0, prev.total_users - 1) })); },
+    onUserCreated: () => { loadData(); },
+    onUserUpdated: () => { loadData(); },
   });
 
   const presentUserIds = new Set(presence.map(p => p.user_id));
   const allUsersList = users;
   const presentUsersList = users.filter(u => presentUserIds.has(u.id));
-  const absentUsersList = users.filter(u => !presentUserIds.has(u.id));
 
-  const currentList = showList === 'all' ? allUsersList : showList === 'present' ? presentUsersList : showList === 'absent' ? absentUsersList : [];
+  const currentList = showList === 'all' ? allUsersList : showList === 'present' ? presentUsersList : [];
 
   const loadData = useCallback(async () => {
     try {
@@ -66,7 +69,17 @@ export function Dashboard() {
   const showNotification = (type: 'success' | 'error', message: string) => { setNotification({ type, message }); setTimeout(() => setNotification(null), 4000); };
 
   const openModal = (user?: UserType) => {
-    if (user) { setEditingUser(user); setFormData({ name: user.name, registration: user.registration, cpf: user.cpf || '', photo: '' }); }
+    if (user) { 
+      setEditingUser(user); 
+      // Se tem foto, usa a URL da API para exibir (não base64)
+      const photoUrl = user.has_photo ? api.getUserPhotoUrl(user.id) : '';
+      setFormData({ 
+        name: user.name, 
+        registration: user.registration, 
+        cpf: user.cpf || '', 
+        photo: photoUrl
+      }); 
+    }
     else { setEditingUser(null); setFormData({ name: '', registration: '', cpf: '', photo: '' }); }
     setShowModal(true);
   };
@@ -82,8 +95,16 @@ export function Dashboard() {
     setLoading(true);
     try {
       if (editingUser) {
-        await api.updateUser(editingUser.id, formData);
-        setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...formData, has_photo: !!formData.photo } : u));
+        // Só enviar foto se for uma URL nova (não a foto existente)
+        const sendPhoto = formData.photo && !formData.photo.startsWith('http');
+        await api.updateUser(editingUser.id, { ...formData, photo: sendPhoto ? formData.photo : '' });
+        setUsers(prev => prev.map(u => u.id === editingUser.id ? { 
+          ...u, 
+          name: formData.name, 
+          registration: formData.registration,
+          cpf: formData.cpf,
+          has_photo: sendPhoto ? true : u.has_photo 
+        } : u));
         showNotification('success', 'Usuário atualizado!');
       } else {
         const nu = await api.createUser(formData);
@@ -149,15 +170,12 @@ export function Dashboard() {
       {/* Main Content */}
       <main className="w-full max-w-7xl px-6 py-10 relative z-10 space-y-8 flex-1">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative">
           <button onClick={() => setShowList(showList === 'all' ? null : 'all')} className="text-left">
             <StatCard icon={Users} label="Total de Usuários" value={stats.total_users} colorClass="from-indigo-500 to-purple-600" bgClass="from-indigo-600 to-purple-700" />
           </button>
           <button onClick={() => setShowList(showList === 'present' ? null : 'present')} className="text-left">
             <StatCard icon={UserCheck} label="Presentes Hoje" value={stats.present_today} colorClass="from-emerald-400 to-teal-500" bgClass="from-emerald-500 to-teal-600" />
-          </button>
-          <button onClick={() => setShowList(showList === 'absent' ? null : 'absent')} className="text-left">
-            <StatCard icon={User} label="Faltantes" value={stats.absent_today} colorClass="from-amber-400 to-orange-500" bgClass="from-amber-500 to-orange-600" />
           </button>
           <StatCard icon={Clock} label="Entradas Hoje" value={stats.total_entries_today} colorClass="from-rose-400 to-pink-500" bgClass="from-rose-500 to-pink-600" />
         </div>
@@ -222,8 +240,17 @@ export function Dashboard() {
                     <input type="text" placeholder="Nome, Matrícula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-14 pr-6 py-4 bg-slate-900/80 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-medium text-lg shadow-inner" />
                   </div>
                   <div className="flex items-center gap-4">
-                    <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); loadData(); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group">
+                    <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
                       <RefreshCw className={`w-6 h-6 text-slate-300 group-hover:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} usuários importados do IDFace`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide">
+                      <Download className="w-6 h-6" /> Importar IDFace
+                    </button>
+                    <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados, ${result.error_count} erros`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide">
+                      <Upload className="w-6 h-6" /> Forçar Pendentes
+                    </button>
+                    <button onClick={() => setShowImportModal(true)} className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-indigo-500/40 hover:-translate-y-0.5 text-white tracking-wide">
+                      <Upload className="w-6 h-6" /> Importar CSV
                     </button>
                     <button onClick={() => openModal()} className="flex items-center gap-3 px-8 py-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 text-white tracking-wide">
                       <Plus className="w-6 h-6" /> Novo Ativo
@@ -234,9 +261,12 @@ export function Dashboard() {
                 {/* Grid */}
                 {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).map(user => (
-                      <UserRow key={user.id} user={user} photoUrl={api.getUserPhotoUrl(user.id)} onToggleStatus={handleToggleStatus} onEdit={openModal} onDelete={handleDelete} />
-                    ))}
+                    {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).map(user => {
+                      const photoUrl = user.photo_url ? `http://localhost:5000${user.photo_url}?t=${Date.now()}` : '';
+                      return (
+                        <UserRow key={user.id} user={user} photoUrl={photoUrl} onToggleStatus={handleToggleStatus} onEdit={openModal} onDelete={handleDelete} onUserUpdated={loadData} />
+                      );
+                    })}
                   </div>
                 ) : (
                    <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -305,6 +335,7 @@ export function Dashboard() {
       {/* Modals & Notifications */}
       {showModal && <UserModal editingUser={!!editingUser} formData={formData} setFormData={setFormData} setShowCamera={setShowCamera} closeModal={closeModal} handleSubmit={handleSubmit} loading={loading} />}
       {showCamera && <CameraCapture onCapture={(photo) => { setFormData(p => ({ ...p, photo })); setShowCamera(false); }} onClose={() => setShowCamera(false)} />}
+      {showImportModal && <ImportUsersModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onImportComplete={loadData} />}
       
       {notification && (
         <div className={`fixed bottom-8 right-8 px-6 py-4 rounded-2xl flex items-center gap-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] z-[100] animate-slideUp border border-white/10 ${notification.type === 'success' ? 'bg-gradient-to-r from-emerald-600 to-teal-700' : 'bg-gradient-to-r from-rose-600 to-pink-700'}`}>

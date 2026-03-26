@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import type { User as UserType } from '../services/api';
-import { User, CheckCircle, ShieldOff, ToggleLeft, ToggleRight, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { User, CheckCircle, ShieldOff, ToggleLeft, ToggleRight, AlertCircle, Edit, Trash2, RefreshCw, Upload } from 'lucide-react';
+import { api } from '../services/api';
 
 interface UserRowProps {
   user: UserType;
@@ -7,16 +9,49 @@ interface UserRowProps {
   onToggleStatus: (user: UserType) => void;
   onEdit: (user: UserType) => void;
   onDelete: (user: UserType) => void;
+  onUserUpdated: () => void;
 }
 
-export function UserRow({ user, photoUrl, onToggleStatus, onEdit, onDelete }: UserRowProps) {
+export function UserRow({ user, photoUrl, onToggleStatus, onEdit, onDelete, onUserUpdated }: UserRowProps) {
+  const [isSynced, setIsSynced] = useState<boolean | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const checkSync = () => {
+    if (user.idface_id) {
+      api.checkUserSync(user.id).then(result => {
+        setIsSynced(result.synced);
+      }).catch(() => {
+        setIsSynced(false);
+      });
+    } else {
+      setIsSynced(false);
+    }
+  };
+
+  useEffect(() => {
+    checkSync();
+  }, [user.id, user.idface_id]);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await api.syncUserToIdFace(user.id);
+      checkSync();
+      onUserUpdated();
+    } catch (err) {
+      alert('Erro ao sincronizar: ' + (err as Error).message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <div className="group glass-card rounded-2xl p-5 hover:bg-white/10 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/10 border border-transparent hover:border-white/10">
       <div className="flex items-start gap-4">
         <div className="relative">
           <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden flex-shrink-0 border border-white/5 group-hover:border-emerald-500/30 transition-colors shadow-inner">
             {user.has_photo ? (
-              <img src={photoUrl} alt={user.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+              <img src={photoUrl} alt={user.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { console.log('Photo load error for', user.name, photoUrl); (e.target as HTMLImageElement).style.display = 'none'; }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-7 h-7 text-slate-500" />
@@ -31,13 +66,18 @@ export function UserRow({ user, photoUrl, onToggleStatus, onEdit, onDelete }: Us
           <h3 className="font-heading font-semibold text-lg text-white truncate group-hover:text-emerald-400 transition-colors">{user.name}</h3>
           <p className="text-sm text-slate-400 font-medium">Mat: <span className="text-slate-300">{user.registration}</span></p>
           <div className="flex items-center gap-2 mt-1">
-            {user.idface_id ? (
+            {isSynced === true ? (
               <span className="flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
                 <CheckCircle className="w-3 h-3" /> Sincronizado
               </span>
+            ) : isSynced === false ? (
+              <button onClick={handleSync} disabled={isSyncing} className="flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full hover:bg-amber-400/20 transition-colors">
+                {isSyncing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                {isSyncing ? 'Enviando...' : 'Pendente - Enviar'}
+              </button>
             ) : (
-              <span className="flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
-                <AlertCircle className="w-3 h-3" /> Pendente
+              <span className="flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-500/10 px-2 py-0.5 rounded-full">
+                <RefreshCw className="w-3 h-3 animate-spin" /> Verificando
               </span>
             )}
           </div>
