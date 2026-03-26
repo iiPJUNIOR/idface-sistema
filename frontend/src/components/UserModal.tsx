@@ -20,8 +20,8 @@ interface UserModalProps {
 
 export function UserModal({ editingUser, formData, setFormData, setShowCamera, closeModal, handleSubmit, loading }: UserModalProps) {
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center z-[60] p-4 transition-all duration-300">
-      <div className="bg-slate-900 rounded-3xl w-full max-w-md max-h-[100dvh] flex flex-col border border-white/10 shadow-2xl relative animate-float-up">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 rounded-3xl w-full max-w-md max-h-[90dvh] flex flex-col border border-white/10 shadow-2xl relative animate-float-up">
         {/* Glow effect */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none hidden sm:block"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none hidden sm:block"></div>
@@ -35,55 +35,57 @@ export function UserModal({ editingUser, formData, setFormData, setShowCamera, c
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 sm:space-y-6 relative z-10 overflow-y-auto min-h-0">
-          <div className="flex justify-center mb-2">
-            <div
-              onClick={() => setShowCamera(true)}
-              className="w-32 h-32 bg-slate-800/50 rounded-3xl border-2 border-dashed border-emerald-500/30 hover:border-emerald-500 cursor-pointer flex flex-col items-center justify-center transition-all duration-300 group shadow-inner relative overflow-hidden"
-            >
-              {formData.photo ? (
-                <>
-                  <img 
-                    src={formData.photo.startsWith('http') ? formData.photo : `data:image/jpeg;base64,${formData.photo}`} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover" 
-                  />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center shadow-[inset_0_0_40px_rgba(0,0,0,0.8)]">
-                    <Camera className="w-8 h-8 text-white" />
-                    <span className="text-xs font-semibold text-white mt-2">Alterar</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform ${!editingUser && !formData.photo ? 'bg-rose-500/20' : 'bg-white/5'}`}>
-                    <Camera className={`w-6 h-6 ${!editingUser && !formData.photo ? 'text-rose-400' : 'text-emerald-400'}`} />
-                  </div>
-                  <span className={`text-xs font-medium group-hover:text-emerald-300 ${!editingUser && !formData.photo ? 'text-rose-400' : 'text-slate-400'}`}>
-                    Capturar Biometria *
-                  </span>
-                </>
-              )}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 relative z-10">
+          <div className="p-6 sm:p-8 space-y-5 sm:space-y-6 overflow-y-auto min-h-0">
+            <div className="flex justify-center mb-2">
+              <div
+                onClick={() => setShowCamera(true)}
+                className="w-32 h-32 bg-slate-800/50 rounded-3xl border-2 border-dashed border-emerald-500/30 hover:border-emerald-500 cursor-pointer flex flex-col items-center justify-center transition-all duration-300 group shadow-inner relative overflow-hidden"
+              >
+                {formData.photo ? (
+                  <>
+                    <img 
+                      src={formData.photo.startsWith('http') ? formData.photo : `data:image/jpeg;base64,${formData.photo}`} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover" 
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center shadow-[inset_0_0_40px_rgba(0,0,0,0.8)]">
+                      <Camera className="w-8 h-8 text-white" />
+                      <span className="text-xs font-semibold text-white mt-2">Alterar</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform ${!editingUser && !formData.photo ? 'bg-rose-500/20' : 'bg-white/5'}`}>
+                      <Camera className={`w-6 h-6 ${!editingUser && !formData.photo ? 'text-rose-400' : 'text-emerald-400'}`} />
+                    </div>
+                    <span className={`text-xs font-medium group-hover:text-emerald-300 ${!editingUser && !formData.photo ? 'text-rose-400' : 'text-slate-400'}`}>
+                      Capturar Biometria *
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative">
+                 <input type="text" required value={formData.name} onChange={(e) => setFormData((prev: FormData) => ({ ...prev, name: e.target.value }))} className="peer w-full px-5 pt-8 pb-3 bg-slate-950/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" placeholder="Nome" />
+                 <label className="absolute top-4 left-5 text-sm font-medium text-slate-400 peer-focus:text-emerald-400 peer-focus:-translate-y-2 peer-focus:scale-[0.85] peer-valid:-translate-y-2 peer-valid:scale-[0.85] transition-all origin-left pointer-events-none">Nome Completo *</label>
+              </div>
+
+              <div className="relative">
+                 <input type="text" required value={formData.registration} onChange={(e) => setFormData((prev: FormData) => ({ ...prev, registration: e.target.value }))} className="peer w-full px-5 pt-8 pb-3 bg-slate-950/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" placeholder="Matrícula" />
+                 <label className="absolute top-4 left-5 text-sm font-medium text-slate-400 peer-focus:text-emerald-400 peer-focus:-translate-y-2 peer-focus:scale-[0.85] peer-valid:-translate-y-2 peer-valid:scale-[0.85] transition-all origin-left pointer-events-none">Matrícula *</label>
+              </div>
+
+              <div className="relative">
+                 <input type="text" required value={formData.cpf} onChange={(e) => setFormData((prev: FormData) => ({ ...prev, cpf: e.target.value }))} className="peer w-full px-5 pt-8 pb-3 bg-slate-950/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" placeholder="CPF" />
+                 <label className="absolute top-4 left-5 text-sm font-medium text-slate-400 peer-focus:text-emerald-400 peer-focus:-translate-y-2 peer-focus:scale-[0.85] peer-valid:-translate-y-2 peer-valid:scale-[0.85] transition-all origin-left pointer-events-none">CPF *</label>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="relative">
-               <input type="text" required value={formData.name} onChange={(e) => setFormData((prev: FormData) => ({ ...prev, name: e.target.value }))} className="peer w-full px-5 pt-8 pb-3 bg-slate-950/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" placeholder="Nome" />
-               <label className="absolute top-4 left-5 text-sm font-medium text-slate-400 peer-focus:text-emerald-400 peer-focus:-translate-y-2 peer-focus:scale-[0.85] peer-valid:-translate-y-2 peer-valid:scale-[0.85] transition-all origin-left pointer-events-none">Nome Completo *</label>
-            </div>
-
-            <div className="relative">
-               <input type="text" required value={formData.registration} onChange={(e) => setFormData((prev: FormData) => ({ ...prev, registration: e.target.value }))} className="peer w-full px-5 pt-8 pb-3 bg-slate-950/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" placeholder="Matrícula" />
-               <label className="absolute top-4 left-5 text-sm font-medium text-slate-400 peer-focus:text-emerald-400 peer-focus:-translate-y-2 peer-focus:scale-[0.85] peer-valid:-translate-y-2 peer-valid:scale-[0.85] transition-all origin-left pointer-events-none">Matrícula *</label>
-            </div>
-
-            <div className="relative">
-               <input type="text" required value={formData.cpf} onChange={(e) => setFormData((prev: FormData) => ({ ...prev, cpf: e.target.value }))} className="peer w-full px-5 pt-8 pb-3 bg-slate-950/50 border border-white/10 rounded-2xl text-white placeholder-transparent focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium" placeholder="CPF" />
-               <label className="absolute top-4 left-5 text-sm font-medium text-slate-400 peer-focus:text-emerald-400 peer-focus:-translate-y-2 peer-focus:scale-[0.85] peer-valid:-translate-y-2 peer-valid:scale-[0.85] transition-all origin-left pointer-events-none">CPF *</label>
-            </div>
-          </div>
-
-          <div className="flex gap-3 sm:gap-4 pt-4 mt-6 sm:mt-8 border-t border-white/5">
+          <div className="flex gap-3 sm:gap-4 p-5 sm:p-6 border-t border-white/5 bg-slate-900/50 shrink-0">
             <button type="button" onClick={closeModal} className="flex-1 px-3 sm:px-5 py-3 sm:py-3.5 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded-2xl transition-all text-slate-300 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 text-sm sm:text-base">
               Cancelar
             </button>

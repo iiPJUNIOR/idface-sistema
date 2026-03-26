@@ -39,7 +39,7 @@ export function Dashboard() {
     setRecognitions((prev) => [rec, ...prev.slice(0, 99)]);
   }, []);
 
-  const { isConnected } = useSocket({
+  useSocket({
     onPresenceDetected: handlePresenceDetected,
     onRecognitionDetected: handleRecognitionDetected,
     onUserDeleted: (data) => { setUsers((prev) => prev.filter((u) => u.id !== (data as { user_id: number }).user_id)); setStats((prev) => ({ ...prev, total_users: Math.max(0, prev.total_users - 1) })); },
@@ -64,7 +64,7 @@ export function Dashboard() {
     try { setIdfaceStatus(await api.testIdFace()); } catch { setIdfaceStatus({ connected: false, message: 'Erro' }); }
   }, []);
 
-  useEffect(() => { loadData(); loadIdfaceStatus(); const iv = setInterval(loadIdfaceStatus, 30000); return () => clearInterval(iv); }, [loadData, loadIdfaceStatus]);
+  useEffect(() => { loadData(); loadIdfaceStatus(); const iv = setInterval(() => { loadData(); loadIdfaceStatus(); }, 15000); return () => clearInterval(iv); }, [loadData, loadIdfaceStatus]);
 
   const showNotification = (type: 'success' | 'error', message: string) => { setNotification({ type, message }); setTimeout(() => setNotification(null), 4000); };
 
@@ -151,14 +151,14 @@ export function Dashboard() {
           <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto justify-center sm:justify-end flex-wrap sm:flex-nowrap">
             <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 glass-card rounded-full border-white/5 shadow-inner">
               <span className="relative flex h-3 w-3">
-                {idfaceStatus.connected || isConnected ? (
+                {idfaceStatus.connected ? (
                   <><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_10px_2px_rgba(16,185,129,0.5)]"></span></>
                 ) : (
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 shadow-[0_0_10px_2px_rgba(244,63,94,0.5)]"></span>
                 )}
               </span>
               <span className="text-xs sm:text-sm font-semibold tracking-wide uppercase text-slate-300">
-                Data Hub {idfaceStatus.connected || isConnected ? <span className="text-emerald-400 ml-1">Online</span> : <span className="text-rose-400 ml-1">Offline</span>}
+                Data Hub {idfaceStatus.connected ? <span className="text-emerald-400 ml-1">Online</span> : <span className="text-rose-400 ml-1">Offline</span>}
               </span>
             </div>
             <button onClick={() => api.openDoor(0)} className="group relative flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-emerald-500/30 overflow-hidden isolate flex-1 sm:flex-none justify-center">
