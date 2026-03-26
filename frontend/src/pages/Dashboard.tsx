@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, UserCheck, DoorOpen, Plus, Search, User, Clock, CheckCircle, AlertCircle, RefreshCw, Fingerprint, Upload, Download } from 'lucide-react';
+import { Users, UserCheck, DoorOpen, Plus, Search, Clock, CheckCircle, AlertCircle, RefreshCw, Fingerprint, Upload, Download } from 'lucide-react';
 import { api } from '../services/api';
 import type { User as UserType, Presence } from '../services/api';
 import { useSocket } from '../hooks/useSocket';

@@ -2,8 +2,6 @@ import { useState, useRef } from 'react';
 import { Upload, X, FileText, Check, AlertCircle, Loader2, Download } from 'lucide-react';
 import { api } from '../services/api';
 
-const SAMPLE_CSV = 'name\tregistration\tcpf\nJoão Silva\t12345\t12345678901\nMaria Santos\t12346\t\nPedro Oliveira\t12347\t12345678903';
-
 interface ImportUsersModalProps {
   isOpen: boolean;
   onClose: () => void;

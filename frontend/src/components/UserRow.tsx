@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { User as UserType } from '../services/api';
-import { User, CheckCircle, ShieldOff, ToggleLeft, ToggleRight, AlertCircle, Edit, Trash2, RefreshCw, Upload } from 'lucide-react';
+import { User, CheckCircle, ShieldOff, ToggleLeft, ToggleRight, Edit, Trash2, RefreshCw, Upload } from 'lucide-react';
 import { api } from '../services/api';
 
 interface UserRowProps {
