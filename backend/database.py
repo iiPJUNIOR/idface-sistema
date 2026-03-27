@@ -77,6 +77,19 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_presence(date)
         ''')
         
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS devices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                ip TEXT NOT NULL,
+                port INTEGER DEFAULT 80,
+                user TEXT NOT NULL,
+                password TEXT NOT NULL,
+                active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         conn.commit()
         conn.close()
     
@@ -229,15 +242,16 @@ class Database:
             conn.commit()
             log_id = cursor.lastrowid
             
-            today = datetime.now().strftime('%Y-%m-%d')
-            
-            cursor.execute('''
-                INSERT INTO daily_presence (user_id, date, first_entry, last_entry, entries_count)
-                VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
-                ON CONFLICT(user_id, date) DO UPDATE SET
-                    last_entry = CURRENT_TIMESTAMP,
-                    entries_count = entries_count + 1
-            ''', (user_id, today))
+            if user_id and user_id > 0:
+                today = datetime.now().strftime('%Y-%m-%d')
+                
+                cursor.execute('''
+                    INSERT INTO daily_presence (user_id, date, first_entry, last_entry, entries_count)
+                    VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
+                    ON CONFLICT(user_id, date) DO UPDATE SET
+                        last_entry = CURRENT_TIMESTAMP,
+                        entries_count = entries_count + 1
+                ''', (user_id, today))
             
             conn.commit()
             conn.close()
@@ -273,7 +287,25 @@ class Database:
         cursor.execute('''
             SELECT pl.*, u.name, u.registration
             FROM presence_logs pl
-            JOIN users u ON pl.user_id = u.id
+            LEFT JOIN users u ON pl.user_id = u.id
+            WHERE pl.user_id > 0
+            ORDER BY pl.created_at DESC
+            LIMIT ?
+        ''', (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    def get_all_logs(self, limit: int = 100) -> List[Dict]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT pl.*, u.name, u.registration
+            FROM presence_logs pl
+            LEFT JOIN users u ON pl.user_id = u.id
             ORDER BY pl.created_at DESC
             LIMIT ?
         ''', (limit,))
@@ -331,3 +363,79 @@ class Database:
             "absent_today": total_users - present_today,
             "total_entries_today": total_entries
         }
+    
+    def add_device(self, name: str, ip: str, port: int, user: str, password: str) -> int:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO devices (name, ip, port, user, password)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (name, ip, port, user, password))
+        conn.commit()
+        device_id = cursor.lastrowid
+        conn.close()
+        return device_id
+    
+    def update_device(self, device_id: int, name: str = None, ip: str = None, port: int = None, 
+                     user: str = None, password: str = None, active: int = None):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        updates = []
+        values = []
+        if name is not None:
+            updates.append("name = ?")
+            values.append(name)
+        if ip is not None:
+            updates.append("ip = ?")
+            values.append(ip)
+        if port is not None:
+            updates.append("port = ?")
+            values.append(port)
+        if user is not None:
+            updates.append("user = ?")
+            values.append(user)
+        if password is not None:
+            updates.append("password = ?")
+            values.append(password)
+        if active is not None:
+            updates.append("active = ?")
+            values.append(active)
+        
+        if updates:
+            values.append(device_id)
+            cursor.execute(f"UPDATE devices SET {', '.join(updates)} WHERE id = ?", values)
+            conn.commit()
+        
+        conn.close()
+    
+    def delete_device(self, device_id: int):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM devices WHERE id = ?', (device_id,))
+        conn.commit()
+        conn.close()
+    
+    def get_device(self, device_id: int) -> Optional[Dict]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM devices WHERE id = ?', (device_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+    
+    def list_devices(self) -> List[Dict]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, name, ip, port, user, active, created_at FROM devices ORDER BY name')
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    
+    def get_active_devices(self) -> List[Dict]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM devices WHERE active = 1 ORDER BY name')
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]

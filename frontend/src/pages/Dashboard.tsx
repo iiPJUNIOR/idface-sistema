@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, UserCheck, DoorOpen, Plus, Search, Clock, CheckCircle, AlertCircle, RefreshCw, Fingerprint, Upload, Download } from 'lucide-react';
+import { Users, UserCheck, DoorOpen, Plus, Search, Clock, CheckCircle, AlertCircle, RefreshCw, Fingerprint, Upload, Download, Settings, Trash2, Wifi, WifiOff } from 'lucide-react';
 import { api } from '../services/api';
 import type { User as UserType, Presence } from '../services/api';
 import { useSocket } from '../hooks/useSocket';
@@ -9,9 +9,14 @@ import { UserRow } from '../components/UserRow';
 import { UserModal } from '../components/UserModal';
 import { PresenceList } from '../components/PresenceList';
 import { ImportUsersModal } from '../components/ImportUsersModal';
+import { DeviceModal } from '../components/DeviceModal';
 
 export function Dashboard() {
-  const [activeTab, setActiveTab] = useState<'users' | 'presence' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'presence' | 'logs' | 'devices'>('users');
+  const [devices, setDevices] = useState<any[]>([]);
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<any | null>(null);
+  const [testingDevice, setTestingDevice] = useState<number | null>(null);
   const [users, setUsers] = useState<UserType[]>([]);
   const [presence, setPresence] = useState<Presence[]>([]);
   const [recognitions, setRecognitions] = useState<any[]>([]);
@@ -26,6 +31,10 @@ export function Dashboard() {
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showList, setShowList] = useState<'all' | 'present' | 'absent' | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteUser, setDeleteUser] = useState<UserType | null>(null);
+  const [deleteType, setDeleteType] = useState<'photo' | 'user' | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
 
   const handlePresenceDetected = useCallback((data: unknown) => {
     const presenceData = data as Presence;
@@ -55,8 +64,8 @@ export function Dashboard() {
 
   const loadData = useCallback(async () => {
     try {
-      const [u, p, s] = await Promise.all([api.getUsers(), api.getPresenceToday(), api.getPresenceStats()]);
-      setUsers(u); setPresence(p.presence); setStats(s);
+      const [u, p, s, r] = await Promise.all([api.getUsers(), api.getPresenceToday(), api.getPresenceStats(), api.getRecognitions(100)]);
+      setUsers(u); setPresence(p.presence); setStats(s); setRecognitions(r);
     } catch { console.error('Error loading data'); }
   }, []);
 
@@ -64,7 +73,14 @@ export function Dashboard() {
     try { setIdfaceStatus(await api.testIdFace()); } catch { setIdfaceStatus({ connected: false, message: 'Erro' }); }
   }, []);
 
-  useEffect(() => { loadData(); loadIdfaceStatus(); const iv = setInterval(() => { loadData(); loadIdfaceStatus(); }, 15000); return () => clearInterval(iv); }, [loadData, loadIdfaceStatus]);
+  const loadDevices = useCallback(async () => {
+    try {
+      const d = await api.getDevices();
+      setDevices(d);
+    } catch { console.error('Error loading devices'); }
+  }, []);
+
+  useEffect(() => { loadData(); loadIdfaceStatus(); loadDevices(); const iv = setInterval(() => { loadData(); loadIdfaceStatus(); }, 15000); return () => clearInterval(iv); }, [loadData, loadIdfaceStatus, loadDevices]);
 
   const showNotification = (type: 'success' | 'error', message: string) => { setNotification({ type, message }); setTimeout(() => setNotification(null), 4000); };
 
@@ -106,18 +122,59 @@ export function Dashboard() {
           has_photo: sendPhoto ? true : u.has_photo 
         } : u));
         showNotification('success', 'Usuário atualizado!');
+        // Sincroniza com IDFace após 500ms (sem mostrar erro)
+        setTimeout(async () => {
+          try {
+            await api.syncUser(editingUser.id);
+          } catch { console.error('Sync error (silent)'); }
+        }, 500);
       } else {
         const nu = await api.createUser(formData);
-        setUsers(prev => [...prev, nu]); showNotification('success', 'Usuário cadastrado!');
+        setUsers(prev => [...prev, nu]);
+        if ((nu as any).photo_warning) {
+          showNotification('error', (nu as any).photo_warning);
+        } else {
+          showNotification('success', 'Usuário cadastrado!');
+        }
+        // Sincroniza com IDFace após 500ms (sem mostrar erro)
+        setTimeout(async () => {
+          try {
+            await api.syncUser((nu as any).id);
+          } catch { console.error('Sync error (silent)'); }
+        }, 500);
       }
       closeModal();
     } catch (err: unknown) { showNotification('error', err instanceof Error ? err.message : 'Erro'); } finally { setLoading(false); }
   };
 
-  const handleDelete = async (user: UserType) => {
-    if (!confirm(`Excluir ${user.name}?`)) return;
-    try { await api.deleteUser(user.id); setUsers(prev => prev.filter(u => u.id !== user.id)); showNotification('success', 'Excluído!'); }
-    catch { showNotification('error', 'Erro'); }
+  const handleDelete = (user: UserType) => {
+    setDeleteUser(user);
+    setDeleteType(null);
+    setDeleteConfirmName('');
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeletePhoto = async () => {
+    if (!deleteUser) return;
+    try {
+      await api.deleteUserPhoto(deleteUser.id);
+      setUsers(prev => prev.map(u => u.id === deleteUser.id ? { ...u, has_photo: false } : u));
+      showNotification('success', 'Foto excluída do sistema!');
+      setShowDeleteModal(false);
+    } catch { showNotification('error', 'Erro ao excluir foto'); }
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteUser || deleteConfirmName.toLowerCase() !== deleteUser.name.toLowerCase()) {
+      showNotification('error', 'Nome não confere!');
+      return;
+    }
+    try {
+      await api.deleteUser(deleteUser.id);
+      setUsers(prev => prev.filter(u => u.id !== deleteUser.id));
+      showNotification('success', 'Usuário excluído!');
+      setShowDeleteModal(false);
+    } catch { showNotification('error', 'Erro ao excluir usuário'); }
   };
 
   const handleToggleStatus = async (user: UserType) => {
@@ -222,9 +279,10 @@ export function Dashboard() {
             {[
               { id: 'users', icon: Users, label: 'Central de Usuários', shortLabel: 'Usuários' },
               { id: 'logs', icon: Fingerprint, label: 'Reconhecimentos em Tempo Real', shortLabel: 'Logs' },
-              { id: 'presence', icon: Clock, label: 'Feed de Acessos Real-Time', shortLabel: 'Acessos' }
+              { id: 'presence', icon: Clock, label: 'Feed de Acessos Real-Time', shortLabel: 'Acessos' },
+              { id: 'devices', icon: Settings, label: 'Dispositivos IDFace', shortLabel: 'Dispositivos' }
             ].map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs')} className={`min-w-fit flex-1 px-5 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as 'users' | 'presence' | 'logs' | 'devices')} className={`min-w-fit flex-1 px-5 sm:px-6 py-4 sm:py-6 font-heading font-semibold text-sm sm:text-lg flex items-center justify-center gap-2 sm:gap-3 relative focus:outline-none border-b-2 border-transparent ${activeTab === tab.id ? 'text-white border-emerald-400' : 'text-slate-500 hover:text-slate-300'} pb-[calc(1rem-2px)] sm:pb-[calc(1.5rem-2px)]`}>
                 <tab.icon className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${activeTab === tab.id ? 'text-emerald-400' : 'opacity-70'}`} />
                 <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
                 <span className="sm:hidden whitespace-nowrap">{tab.shortLabel}</span>
@@ -248,7 +306,7 @@ export function Dashboard() {
                     <button onClick={() => { setLoading(true); api.syncAllUsers().then(() => { showNotification('success', 'Sync concluído'); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start p-3 sm:p-4 glass-card hover:bg-slate-800 rounded-2xl transition-all shadow-lg hover:shadow-emerald-500/20 group" title="Sincronizar com IDFace">
                       <RefreshCw className={`w-5 h-5 sm:w-6 sm:h-6 text-slate-300 group-hover:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} importados`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
+                    <button onClick={() => { setLoading(true); api.syncFromIdFace().then((result) => { showNotification('success', `${result.synced} importados`); window.location.reload(); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-cyan-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
                       <Download className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" /> <span className="whitespace-nowrap">IDFace</span>
                     </button>
                     <button onClick={() => { setLoading(true); api.syncAllPendingUsers().then((result) => { showNotification('success', `${result.success_count} enviados`); setTimeout(() => loadData(), 500); }).catch(() => showNotification('error', 'Erro')).finally(() => setLoading(false)); }} disabled={loading} className="shrink-0 snap-start flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl font-bold transition-all shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 text-white tracking-wide text-sm sm:text-base">
@@ -267,7 +325,7 @@ export function Dashboard() {
                 {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     {users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.registration.includes(searchTerm)).map(user => {
-                      const photoUrl = user.photo_url ? `http://localhost:5000${user.photo_url}` : '';
+                      const photoUrl = user.photo_url ? `${api.getUserPhotoUrl(user.id)}` : '';
                       return (
                         <UserRow key={user.id} user={user} photoUrl={photoUrl} onToggleStatus={handleToggleStatus} onEdit={openModal} onDelete={handleDelete} onUserUpdated={loadData} />
                       );
@@ -328,6 +386,91 @@ export function Dashboard() {
                   )}
                 </div>
               </div>
+            ) : activeTab === 'devices' ? (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Dispositivos IDFace</h3>
+                  <button
+                    onClick={() => { setEditingDevice(null); setShowDeviceModal(true); }}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-white font-medium transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Adicionar
+                  </button>
+                </div>
+
+                {devices.length === 0 ? (
+                  <div className="text-center py-10 sm:py-16">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                      <Settings className="w-8 h-8 sm:w-10 sm:h-10 text-slate-600" />
+                    </div>
+                    <p className="text-slate-500 text-base">Nenhum dispositivo cadastrado</p>
+                    <p className="text-slate-600 text-xs mt-1">Adicione um dispositivo IDFace para começar</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {devices.map((device) => (
+                      <div key={device.id} className="bg-slate-800/50 border border-white/5 rounded-2xl p-4 sm:p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${device.active ? 'bg-emerald-500/20' : 'bg-slate-700'}`}>
+                              {device.active ? <Wifi className="w-5 h-5 text-emerald-400" /> : <WifiOff className="w-5 h-5 text-slate-500" />}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-white">{device.name}</h4>
+                              <p className="text-xs text-slate-400">{device.ip}:{device.port}</p>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${device.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-600/20 text-slate-400'}`}>
+                            {device.active ? 'ATIVO' : 'INATIVO'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              setTestingDevice(device.id);
+                              try {
+                                const result = await api.testDeviceConnection(device.id);
+                                showNotification(result.success ? 'success' : 'error', result.message);
+                              } catch {
+                                showNotification('error', 'Erro ao testar');
+                              } finally {
+                                setTestingDevice(null);
+                              }
+                            }}
+                            disabled={testingDevice === device.id}
+                            className="flex-1 py-2 px-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                          >
+                            {testingDevice === device.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+                            Testar
+                          </button>
+                          <button
+                            onClick={() => { setEditingDevice(device); setShowDeviceModal(true); }}
+                            className="py-2 px-3 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 rounded-lg text-indigo-400 text-sm font-medium transition-colors"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Excluir dispositivo "${device.name}"?`)) {
+                                try {
+                                  await api.deleteDevice(device.id);
+                                  setDevices(prev => prev.filter(d => d.id !== device.id));
+                                  showNotification('success', 'Dispositivo excluído');
+                                } catch {
+                                  showNotification('error', 'Erro ao excluir');
+                                }
+                              }
+                            }}
+                            className="py-2 px-3 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 rounded-lg text-rose-400 text-sm font-medium transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
                  <PresenceList presence={presence} />
@@ -341,6 +484,70 @@ export function Dashboard() {
       {showModal && <UserModal editingUser={!!editingUser} formData={formData} setFormData={setFormData} setShowCamera={setShowCamera} closeModal={closeModal} handleSubmit={handleSubmit} loading={loading} />}
       {showCamera && <CameraCapture onCapture={(photo) => { setFormData(p => ({ ...p, photo })); setShowCamera(false); }} onClose={() => setShowCamera(false)} />}
       {showImportModal && <ImportUsersModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onImportComplete={loadData} />}
+      {showDeviceModal && (
+        <DeviceModal
+          device={editingDevice}
+          isOpen={showDeviceModal}
+          onClose={() => { setShowDeviceModal(false); setEditingDevice(null); }}
+          onSave={async (device) => {
+            if (editingDevice) {
+              const updated = await api.updateDevice(editingDevice.id, device);
+              setDevices(prev => prev.map(d => d.id === editingDevice.id ? { ...d, ...updated } : d));
+              showNotification('success', 'Dispositivo atualizado');
+            } else {
+              const created = await api.createDevice(device);
+              setDevices(prev => [...prev, created]);
+              showNotification('success', 'Dispositivo adicionado');
+            }
+          }}
+          onTestConnection={api.testNewDeviceConnection}
+        />
+      )}
+      
+      {showDeleteModal && deleteUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)}></div>
+          <div className="relative bg-slate-900 border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-slideUp">
+            <h3 className="text-xl font-bold text-white mb-4">Excluir Usuário</h3>
+            
+            {!deleteType ? (
+              <div className="space-y-4">
+                <p className="text-slate-400">O que deseja excluir de <span className="text-white font-semibold">{deleteUser.name}</span>?</p>
+                <button onClick={() => setDeleteType('photo')} className="w-full py-3 px-4 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-xl text-amber-400 font-medium transition-colors">
+                  Apenas a Foto
+                </button>
+                <button onClick={() => setDeleteType('user')} className="w-full py-3 px-4 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 rounded-xl text-rose-400 font-medium transition-colors">
+                  Usuário Completo
+                </button>
+                <button onClick={() => setShowDeleteModal(false)} className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-slate-300 font-medium transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            ) : deleteType === 'photo' ? (
+              <div className="space-y-4">
+                <p className="text-slate-400">Confirmar exclusão da foto de <span className="text-white font-semibold">{deleteUser.name}</span>?</p>
+                <button onClick={confirmDeletePhoto} className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 rounded-xl text-white font-medium transition-colors">
+                  Confirmar
+                </button>
+                <button onClick={() => setDeleteType(null)} className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-slate-300 font-medium transition-colors">
+                  Voltar
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-slate-400">Digite <span className="text-white font-semibold">{deleteUser.name}</span> para confirmar a exclusão completa:</p>
+                <input type="text" value={deleteConfirmName} onChange={(e) => setDeleteConfirmName(e.target.value)} placeholder="Digite o nome..." className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-rose-500" />
+                <button onClick={confirmDeleteUser} disabled={deleteConfirmName.toLowerCase() !== deleteUser.name.toLowerCase()} className="w-full py-3 px-4 bg-rose-500 hover:bg-rose-600 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl text-white font-medium transition-colors">
+                  Excluir Usuário
+                </button>
+                <button onClick={() => setDeleteType(null)} className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-slate-300 font-medium transition-colors">
+                  Voltar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       {notification && (
         <div className={`fixed bottom-4 left-4 right-4 sm:bottom-8 sm:left-auto sm:right-8 sm:w-auto px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex items-center gap-3 sm:gap-4 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] z-[100] animate-slideUp border border-white/10 ${notification.type === 'success' ? 'bg-gradient-to-r from-emerald-600 to-teal-700' : 'bg-gradient-to-r from-rose-600 to-pink-700'}`}>

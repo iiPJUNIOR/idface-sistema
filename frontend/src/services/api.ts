@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://iiiPJUNIOR.pythonanywhere.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.0.100:5000';
 
 export interface User {
   id: number;
@@ -38,7 +38,7 @@ export interface CreateUserData {
 
 export const api = {
   async getUsers(): Promise<User[]> {
-    const response = await fetch(`${API_BASE_URL}/api/users`);
+    const response = await fetch(`${API_BASE_URL}/api/users?t=${Date.now()}`);
     const data = await response.json();
     return data.users;
   },
@@ -47,6 +47,12 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/api/users/${id}`);
     const data = await response.json();
     return data.user;
+  },
+
+  async getRecognitions(limit: number = 100): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/api/recognitions?limit=${limit}`);
+    const data = await response.json();
+    return data.recognitions || [];
   },
 
   async createUser(userData: CreateUserData): Promise<User> {
@@ -82,6 +88,26 @@ export const api = {
     const data = await response.json();
     if (!data.success) {
       throw new Error(data.error || 'Erro ao excluir usuário');
+    }
+  },
+
+  async deleteUserPhoto(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/users/${id}/photo`, {
+      method: 'DELETE',
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Erro ao excluir foto');
+    }
+  },
+
+  async syncUser(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/users/${id}/sync`, {
+      method: 'POST',
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Erro ao sincronizar');
     }
   },
 
@@ -132,7 +158,7 @@ export const api = {
   },
 
   async syncFromIdFace(): Promise<{ synced: number; details: { action: string; name: string }[] }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/sync-all`, { method: 'POST' });
+    const response = await fetch(`${API_BASE_URL}/api/users/sync-all?t=${Date.now()}`, { method: 'POST' });
     const data = await response.json();
     return { synced: data.synced, details: data.details };
   },
@@ -221,5 +247,63 @@ export const api = {
       error_count: data.error_count,
       results: data.results,
     };
+  },
+
+  async getDevices(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/api/devices`);
+    const data = await response.json();
+    return data.devices || [];
+  },
+
+  async createDevice(deviceData: { name: string; ip: string; port: number; user: string; password: string }): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/devices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(deviceData),
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Erro ao criar dispositivo');
+    }
+    return data.device;
+  },
+
+  async updateDevice(id: number, deviceData: { name?: string; ip?: string; port?: number; user?: string; password?: string; active?: boolean }): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/devices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(deviceData),
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Erro ao atualizar dispositivo');
+    }
+    return data.device;
+  },
+
+  async deleteDevice(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/devices/${id}`, {
+      method: 'DELETE',
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Erro ao excluir dispositivo');
+    }
+  },
+
+  async testDeviceConnection(id: number): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/devices/${id}/test`, {
+      method: 'POST',
+    });
+    return response.json();
+  },
+
+  async testNewDeviceConnection(ip: string, port: number, user: string, password: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/devices/test-connection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip, port, user, password }),
+    });
+    return response.json();
   },
 };

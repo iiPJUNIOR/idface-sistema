@@ -12,9 +12,9 @@ from datetime import datetime
 from io import BytesIO
 
 from config import Config
-# Usar Supabase (descomente para usar SQLite local)
-# from database import Database
-from database_supabase import db
+# Usando banco SQLite local
+from database import Database
+db = Database()
 from idface_client import IDFaceClient
 
 Config.init_folders()
@@ -27,7 +27,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-# db é importado diretamente de database_supabase
+# db é instância local do SQLite
 idface = IDFaceClient()
 
 polling_active = False
@@ -340,6 +340,56 @@ def list_idface_users():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/idface/orphans', methods=['GET'])
+def list_orphan_users():
+    """Lista usuários que estão no IDFace mas não existem no sistema"""
+    try:
+        # Pegar todos os usuários do IDFace
+        idface_users = idface.list_users()
+        
+        # Pegar todos os usuários do sistema
+        local_users = db.list_users()
+        
+        # Criar lista de CPFs e registrations do sistema
+        system_cpfs = set(str(u.get('cpf', '')).strip() for u in local_users if u.get('cpf'))
+        system_regs = set(str(u.get('registration', '')).strip() for u in local_users if u.get('registration'))
+        
+        # Encontrar órfãos
+        orphans = []
+        for iu in idface_users:
+            iuid = str(iu.get('id', '')).strip()
+            iureg = str(iu.get('registration', '')).strip()
+            
+            # Se não está no sistema por CPF nem por registration
+            if iuid not in system_cpfs and iureg not in system_regs:
+                orphans.append({
+                    "id": iu.get("id"),
+                    "name": iu.get("name"),
+                    "registration": iu.get("registration")
+                })
+        
+        return jsonify({
+            "success": True,
+            "total_idface": len(idface_users),
+            "total_system": len(local_users),
+            "orphans_count": len(orphans),
+            "orphans": orphans
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/idface/orphan/<int:orphan_id>', methods=['DELETE'])
+def delete_orphan(orphan_id):
+    """Remove um usuário órfão do IDFace"""
+    try:
+        result = idface.delete_user(orphan_id)
+        if result.get('success'):
+            return jsonify({"success": True, "message": f"Usuário {orphan_id} removido do IDFace"})
+        else:
+            return jsonify({"success": False, "error": result.get('error', 'Erro desconhecido')}), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/idface/door/open', methods=['POST'])
 def open_door():
     door = request.json.get('door', 0) if request.json else 0
@@ -372,11 +422,37 @@ def create_user():
         photo_path = os.path.join(Config.PHOTOS_FOLDER, filename)
         
         try:
+            from PIL import Image
+            import io
+            
             image_data = base64.b64decode(photo_base64)
+            image = Image.open(io.BytesIO(image_data))
+            
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            max_size = (800, 600)
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+            
+            output = io.BytesIO()
+            image.save(output, format='JPEG', quality=85, optimize=True)
+            compressed_data = output.getvalue()
+            
+            print(f"[Foto] Original: {len(image_data)} bytes, Comprimida: {len(compressed_data)} bytes")
+            
             with open(photo_path, 'wb') as f:
-                f.write(image_data)
+                f.write(compressed_data)
+        except ImportError:
+            print("[Foto] PIL não instalado, salvando original")
+            try:
+                image_data = base64.b64decode(photo_base64)
+                with open(photo_path, 'wb') as f:
+                    f.write(image_data)
+            except Exception as e:
+                print(f"Erro ao salvar foto: {e}")
+                photo_path = None
         except Exception as e:
-            print(f"Erro ao salvar foto: {e}")
+            print(f"Erro ao processar foto: {e}")
             photo_path = None
     
     result = db.add_user(
@@ -400,11 +476,16 @@ def create_user():
     
     socketio.emit('user_created', format_user_for_response(user), room='admin')
     
-    return jsonify({
+    response_data = {
         "success": True,
         "user": format_user_for_response(user),
         "synced_to_idface": photo_base64 is not None
-    }), 201
+    }
+    
+    if sync_result.get('photo_warning'):
+        response_data['photo_warning'] = sync_result['photo_warning']
+    
+    return jsonify(response_data), 201
 
 def sync_user_to_idface(user_id: int) -> dict:
     print(f"[Sync] Iniciando sincronização do usuário ID {user_id}")
@@ -413,6 +494,7 @@ def sync_user_to_idface(user_id: int) -> dict:
         print(f"[Sync] Usuário {user_id} não encontrado no banco")
         return {"success": False, "error": "Usuário não encontrado"}
     
+    print(f"[Sync] User data - name: {user.get('name')}, cpf: {user.get('cpf')}, idface_id: {user.get('idface_id')}, photo_path: {user.get('photo_path')}, photo_base64: {bool(user.get('photo_base64'))}")
     print(f"[Sync] Criando sessão IDFace para {user.get('name')}")
     if not idface.session or (idface.session_created_at and time.time() - idface.session_created_at > 3600):
         session_result = idface.create_session()
@@ -448,37 +530,48 @@ def sync_user_to_idface(user_id: int) -> dict:
     
     if existing:
         idface_id = existing.get('id')
-        if user.get('cpf') and user.get('idface_id') != user['cpf']:
-            db.update_user(user_id, idface_id=user['cpf'])
-            idface_id = int(user['cpf'])
+        old_cpf = str(user.get('cpf', '')).strip() if user.get('cpf') else ''
+        current_idface_id = str(existing.get('id', '')).strip()
         
-        # Verificar se nome mudou - se mudou, excluir e recriar
-        idface_name = existing.get('name', '').strip()
-        print(f"[Sync] Nome no IDFace: '{idface_name}', Nome no sistema: '{user.get('name', '')}'")
-        if idface_name.lower() != user.get('name', '').lower().strip():
-            print(f"[Sync] Nome mudou! Excluindo e recriando usuário...")
-            # Excluir usuário antigo
-            if existing.get('registration'):
-                result_del = idface.delete_user_alternative(existing['registration'])
-                print(f"[Sync] Resultado exclusão: {result_del}")
-            # Criar novo usuário com novo nome
-            create_result = idface.create_user(
+        # Se CPF mudou (comparar com o ID do IDFace), usar create_or_update_user
+        if user.get('cpf') and current_idface_id != old_cpf:
+            new_cpf = user['cpf']
+            print(f"[Sync] CPF alterado! ID IDFace={current_idface_id}, novo CPF={new_cpf}")
+            
+            # Usar create_or_update_user para criar com novo ID
+            result = idface.create_or_update_user(
+                user_id=int(new_cpf),
                 name=user['name'],
-                registration=user['registration'],
-                cpf=user.get('cpf') or str(idface_id)
+                registration=user['registration']
             )
-            if create_result.get('success'):
-                new_idface_id = create_result['user_id']
-                db.update_user(user_id, idface_id=str(new_idface_id))
-                # Enviar foto se existir
-                if user.get('photo_base64') or user.get('photo_path'):
-                    if user.get('photo_path'):
-                        idface.upload_face_photo_from_file(int(new_idface_id), user['photo_path'])
-                    else:
-                        idface.upload_face_photo(int(new_idface_id), user['photo_base64'])
-                print(f"[Sync] Usuário recriado com novo nome! ID: {new_idface_id}")
-                return {"success": True, "idface_id": str(new_idface_id), "action": "updated"}
+            
+            if result.get('success') or result.get('changes', 0) > 0:
+                db.update_user(user_id, idface_id=str(new_cpf))
+                idface_id = new_cpf
+                print(f"[Sync] Usuário atualizado com novo CPF: {new_cpf}")
+            else:
+                print(f"[Sync] Erro ao atualizar CPF: {result}")
         
+        # Verificar se nome ou registration mudou - atualizar diretamente
+        idface_name = existing.get('name', '').strip()
+        idface_reg = existing.get('registration', '').strip()
+        
+        name_changed = idface_name.lower() != user.get('name', '').lower().strip()
+        reg_changed = idface_reg != user.get('registration', '').strip()
+        
+        if name_changed or reg_changed:
+            print(f"[Sync] Atualizando nome/registration no IDFace...")
+            update_result = idface.update_user(
+                user_id=int(idface_id),
+                name=user['name'],
+                registration=user['registration']
+            )
+            if update_result.get('success'):
+                print(f"[Sync] Nome/registration atualizados com sucesso!")
+            else:
+                print(f"[Sync] Erro ao atualizar: {update_result}")
+        
+        # Enviar foto se existir
         if user.get('photo_base64') or user.get('photo_path'):
             photo_id = int(idface_id) if idface_id else int(user.get('cpf', 0))
             if user.get('photo_path'):
@@ -488,14 +581,13 @@ def sync_user_to_idface(user_id: int) -> dict:
             
             if result.get('success'):
                 print(f"[Sync] Foto enviada para usuário {photo_id}")
-                return {"success": True, "idface_id": idface_id, "action": "updated"}
+                return {"success": True, "idface_id": str(idface_id), "action": "updated"}
             else:
                 print(f"[Sync] Erro ao enviar foto: {result}")
         
-        return {"success": True, "idface_id": idface_id, "action": "exists"}
+        return {"success": True, "idface_id": str(idface_id), "action": "updated"}
     
     # Se não encontrou pelo nome/CPF mas tem idface_id e registration, usar direto
-    # (O IDFace pode ter nomes diferentes, mas se registration bate, é o mesmo usuário)
     if user.get('idface_id') and user.get('registration'):
         print(f"[Sync] Usuário não encontrado pelo nome, mas tem idface_id={user.get('idface_id')} no banco")
         # Verificar se existe no IDFace pelo ID
@@ -503,26 +595,27 @@ def sync_user_to_idface(user_id: int) -> dict:
         for u in all_users:
             if str(u.get('id')) == str(user.get('idface_id')):
                 print(f"[Sync] Encontrou usuário pelo idface_id existente!")
-                # Verificar se nome mudou
+                
+                # Verificar se nome ou registration mudou - atualizar diretamente
                 idface_name = u.get('name', '').strip()
-                if idface_name.lower() != user.get('name', '').lower().strip():
-                    print(f"[Sync] Nome mudou! Excluindo e recriando...")
-                    if u.get('registration'):
-                        idface.delete_user_alternative(u['registration'])
-                    create_result = idface.create_user(
+                idface_reg = u.get('registration', '').strip()
+                
+                name_changed = idface_name.lower() != user.get('name', '').lower().strip()
+                reg_changed = idface_reg != user.get('registration', '').strip()
+                
+                if name_changed or reg_changed:
+                    print(f"[Sync] Atualizando nome/registration no IDFace...")
+                    update_result = idface.update_user(
+                        user_id=int(user['idface_id']),
                         name=user['name'],
-                        registration=user['registration'],
-                        cpf=user.get('cpf') or str(user['idface_id'])
+                        registration=user['registration']
                     )
-                    if create_result.get('success'):
-                        new_idface_id = create_result['user_id']
-                        db.update_user(user_id, idface_id=str(new_idface_id))
-                        if user.get('photo_base64') or user.get('photo_path'):
-                            if user.get('photo_path'):
-                                idface.upload_face_photo_from_file(int(new_idface_id), user['photo_path'])
-                            else:
-                                idface.upload_face_photo(int(new_idface_id), user['photo_base64'])
-                        return {"success": True, "idface_id": str(new_idface_id), "action": "updated"}
+                    if update_result.get('success'):
+                        print(f"[Sync] Nome/registration atualizados com sucesso!")
+                
+                # Enviar foto
+                if idface_name.lower() != user.get('name', '').lower().strip():
+                    print(f"[Sync] Nome mudou! Mas não vou excluir/recriar para evitar problemas.")
                 if user.get('photo_base64') or user.get('photo_path'):
                     photo_id = int(user['idface_id'])
                     if user.get('photo_path'):
@@ -558,24 +651,52 @@ def sync_user_to_idface(user_id: int) -> dict:
         return create_result
     
     idface_id = create_result.get('user_id')
+    print(f"[Sync] Novo usuário IDFace ID: {idface_id}")
+    
+    if not idface_id:
+        print(f"[Sync] ERRO: IDFace não retornou user_id!")
+        return {"success": False, "error": "IDFace não retornou ID do usuário"}
     
     photo_id = None
     if user.get('cpf'):
-        photo_id = int(user['cpf'])
-        idface_id = user['cpf']
-        db.update_user(user_id, idface_id=user['cpf'])
+        try:
+            photo_id = int(user['cpf'])
+            idface_id = user['cpf']
+            db.update_user(user_id, idface_id=user['cpf'])
+            print(f"[Sync] Usando CPF como photo_id: {photo_id}")
+        except (ValueError, TypeError) as e:
+            photo_id = int(idface_id)
+            print(f"[Sync] CPF inválido, usando IDFace ID como photo_id: {photo_id}")
     else:
         photo_id = int(idface_id)
         db.update_user(user_id, idface_id=str(idface_id))
+        print(f"[Sync] Usando IDFace ID como photo_id: {photo_id}")
     
+    photo_warning = None
     if user.get('photo_base64') or user.get('photo_path'):
+        print(f"[Sync] Enviando foto... base64={bool(user.get('photo_base64'))}, path={bool(user.get('photo_path'))}")
+        print(f"[Sync] Tamanho da foto base64: {len(user.get('photo_base64', ''))} bytes")
         if user.get('photo_path'):
             photo_result = idface.upload_face_photo_from_file(photo_id, user['photo_path'])
         else:
             photo_result = idface.upload_face_photo(photo_id, user['photo_base64'])
         
+        print(f"[Sync] Resultado do upload: {photo_result}")
         if not photo_result.get('success'):
-            print(f"Aviso: Foto não foi enviada para IDFace: {photo_result}")
+            error_data = photo_result.get('error', {})
+            if isinstance(error_data, dict):
+                error_msg = error_data.get('errors', [{}])[0].get('message', '') if error_data.get('errors') else str(error_data)
+            else:
+                error_msg = str(error_data)
+            
+            if 'Face not detected' in str(error_data):
+                photo_warning = "Rosto não detectado na foto. O IDFace não conseguiu identificar face na imagem."
+            elif 'maximum accepted' in str(error_data):
+                photo_warning = "Foto muito grande. O arquivo excede o tamanho máximo aceito (5MB)."
+            else:
+                photo_warning = f"Erro ao enviar foto para IDFace: {error_msg}"
+            
+            print(f"Aviso: {photo_warning}")
     
     try:
         access_rules = idface.get_access_rules()
@@ -588,7 +709,11 @@ def sync_user_to_idface(user_id: int) -> dict:
     
     db.update_user(user_id, sync_pending=0)
     
-    return {"success": True, "idface_id": idface_id, "action": "created"}
+    result = {"success": True, "idface_id": idface_id, "action": "created"}
+    if photo_warning:
+        result["photo_warning"] = photo_warning
+    
+    return result
 
 @app.route('/api/users/<int:user_id>', methods=['GET'])
 def get_user(user_id):
@@ -627,30 +752,100 @@ def update_user(user_id):
     
     update_data = {k: v for k, v in data.items() if k in ['name', 'cpf', 'photo_path', 'photo_base64', 'idface_id']}
     
-    # Verifica se nome ou foto foi alterado - marca como pendente de sync APENAS se realmente mudou
+    # Verifica se nome, CPF ou foto foi alterado - marca como pendente de sync APENAS se realmente mudou
     name_changed = 'name' in update_data and update_data['name'] and update_data['name'] != user.get('name')
+    cpf_changed = 'cpf' in update_data and update_data['cpf'] and update_data['cpf'] != user.get('cpf')
     photo_changed = has_new_photo  # Só marca se tem foto nova
     
     if update_data:
         db.update_user(user_id, **update_data)
     
-    # Se nome ou foto mudou, marca como pendente
-    if name_changed or photo_changed:
-        db.update_user(user_id, sync_pending=1)
-        print(f"[Update] Usuário {user_id} marcado como pendente de sync (nome alterado: {name_changed}, foto alterada: {photo_changed})")
-    
-    # Se tem foto nova, envia para IDFace
+    # Sincroniza em TEMPO REAL com IDFace
+    # Foto nova - envia para IDFace
     if has_new_photo:
+        print(f"[Update] Enviando foto para IDFace... photo_base64={bool(photo_base64)}, photo_path={data.get('photo_path')}")
         sync_result = sync_user_to_idface(user_id)
+        print(f"[Update] Resultado sync: {sync_result}")
         if sync_result.get('success'):
-            db.update_user(user_id, idface_id=sync_result.get('idface_id'), sync_pending=0)
+            print(f"[Update] Foto enviada com sucesso!")
+        else:
+            print(f"[Update] Erro ao enviar foto: {sync_result}")
     
-    # Se nome mudou mas não tem foto nova, ainda tenta sync para manter a foto (mesmo que nome não seja atualizável no IDFace)
-    if name_changed and not has_new_photo and user.get('idface_id'):
-        # Tenta sync mesmo só com nome (vai manter a foto existente)
-        sync_result = sync_user_to_idface(user_id)
-        if sync_result.get('success'):
-            db.update_user(user_id, sync_pending=0)
+    # Nome alterado - atualiza no IDFace em tempo real
+    if name_changed:
+        new_name = update_data.get('name')
+        idface_id = user.get('idface_id')
+        if idface_id:
+            print(f"[Update] Atualizando nome no IDFace: {new_name}")
+            result = idface.update_user(int(idface_id), name=new_name)
+            if result.get('success'):
+                print(f"[Update] Nome atualizado no IDFace!")
+            else:
+                print(f"[Update] Erro ao atualizar nome: {result}")
+    
+    # CPF alterado - troca o ID no IDFace de forma segura
+    if cpf_changed:
+        old_cpf = user.get('cpf')
+        new_cpf = update_data.get('cpf')
+        print(f"[Update] CPF alterado! De {old_cpf} para {new_cpf}")
+        
+        if old_cpf and new_cpf:
+            # Verificar se o novo CPF já existe no IDFace
+            all_idface_users = idface.list_users()
+            new_cpf_exists = any(str(u.get('id')) == str(new_cpf) for u in all_idface_users)
+            
+            if new_cpf_exists:
+                print(f"[Update] ERRO: CPF {new_cpf} já existe no IDFace!")
+                print(f"[Update] Não é possível trocar - primeiro remova o cadastro existente no IDFace")
+            else:
+                # Verificar usuário antigo existe
+                old_user_exists = any(str(u.get('id')) == str(old_cpf) for u in all_idface_users)
+                
+                if old_user_exists:
+                    # Excluir usuário com CPF antigo
+                    print(f"[Update] Excluindo usuário antigo (CPF={old_cpf})...")
+                    del_result = idface.delete_user(int(old_cpf))
+                    print(f"[Update] Resultado exclusão: {del_result}")
+                    
+                    if del_result.get('success') or del_result.get('changes', 0) == 0:
+                        # Criar novo usuário com novo CPF
+                        print(f"[Update] Criando usuário com novo CPF={new_cpf}...")
+                        new_name = update_data.get('name', user.get('name'))
+                        new_reg = user.get('registration')
+                        
+                        create_result = idface.create_user(
+                            name=new_name,
+                            registration=new_reg,
+                            cpf=new_cpf
+                        )
+                        
+                        if create_result.get('success'):
+                            db.update_user(user_id, idface_id=str(new_cpf))
+                            print(f"[Update] CPF alterado com sucesso no IDFace!")
+                            
+                            # Enviar foto se existir
+                            if user.get('photo_base64') or user.get('photo_path'):
+                                photo_result = idface.upload_face_photo(int(new_cpf), user.get('photo_base64', ''))
+                                print(f"[Update] Foto enviada: {photo_result}")
+                        else:
+                            print(f"[Update] ERRO ao criar usuário: {create_result}")
+                    else:
+                        print(f"[Update] ERRO ao excluir usuário antigo")
+                else:
+                    # Usuário antigo não existe, só criar novo
+                    print(f"[Update] Usuário antigo não existe no IDFace, criando novo...")
+                    new_name = update_data.get('name', user.get('name'))
+                    new_reg = user.get('registration')
+                    
+                    create_result = idface.create_user(
+                        name=new_name,
+                        registration=new_reg,
+                        cpf=new_cpf
+                    )
+                    
+                    if create_result.get('success'):
+                        db.update_user(user_id, idface_id=str(new_cpf))
+                        print(f"[Update] Novo usuário criado no IDFace com CPF: {new_cpf}")
     
     user = db.get_user(user_id)
     
@@ -667,6 +862,8 @@ def delete_user(user_id):
     if not user:
         return jsonify({"success": False, "error": "Usuário não encontrado"}), 404
     
+    idface_deleted = False
+    
     if user.get('photo_path') and os.path.exists(user['photo_path']):
         try:
             os.remove(user['photo_path'])
@@ -674,18 +871,77 @@ def delete_user(user_id):
         except Exception as e:
             print(f"[Delete] Erro ao remover foto: {e}")
     
-    if user.get('idface_id'):
-        if user.get('registration'):
-            result = idface.delete_user_alternative(user['registration'])
-        else:
-            result = idface.delete_user(user['idface_id'])
-        print(f"[Delete] IDFace delete: {result}")
+    registration = user.get('registration')
+    idface_id = user.get('idface_id')
+    
+    # Tenta excluir do IDFace usando o idface_id
+    idface_deleted = False
+    if idface_id:
+        try:
+            print(f"[Delete] Tentando excluir do IDFace (idface_id={idface_id})...")
+            result = idface.delete_user(int(idface_id))
+            print(f"[Delete] Resultado: {result}")
+            if result.get('success'):
+                idface_deleted = True
+            elif result.get('changes', 0) > 1:
+                print(f"[Delete] BLOQUEADO! Exclusão afetaria {result.get('changes')} usuários")
+                print(f"[Delete] Removendo apenas do banco local...")
+            elif result.get('changes', 0) == 0:
+                print(f"[Delete] Usuário não encontrado no IDFace (já foi removido?)")
+                idface_deleted = True  # Considera sucesso pois não existe
+        except Exception as e:
+            print(f"[Delete] Erro ao excluir do IDFace: {e}")
+    
+    # Se não conseguiu pelo idface_id, tenta pela registration
+    if not idface_deleted and registration:
+        try:
+            print(f"[Delete] Tentando excluir do IDFace (registration={registration})...")
+            result = idface.delete_user_alternative(registration)
+            print(f"[Delete] Resultado: {result}")
+            if result.get('success'):
+                idface_deleted = True
+            elif result.get('changes', 0) > 1:
+                print(f"[Delete] BLOQUEADO! Exclusão afetaria {result.get('changes')} usuários")
+        except Exception as e:
+            print(f"[Delete] Erro ao excluir pela registration: {e}")
     
     db.permanently_delete_user(user_id)
     
     socketio.emit('user_deleted', {"user_id": user_id}, room='admin')
     
-    return jsonify({"success": True})
+    return jsonify({"success": True, "deleted_from_idface": idface_deleted})
+
+@app.route('/api/users/<int:user_id>/photo', methods=['DELETE'])
+def delete_user_photo(user_id):
+    user = db.get_user(user_id)
+    if not user:
+        return jsonify({"success": False, "error": "Usuário não encontrado"}), 404
+    
+    if user.get('photo_path') and os.path.exists(user['photo_path']):
+        try:
+            os.remove(user['photo_path'])
+            print(f"[Delete Photo] Foto removida: {user['photo_path']}")
+        except Exception as e:
+            print(f"[Delete Photo] Erro ao remover foto: {e}")
+    
+    idface_id = user.get('idface_id')
+    print(f"[Delete Photo] User: {user.get('name')}, idface_id: {idface_id}, cpf: {user.get('cpf')}")
+    
+    if not idface_id and user.get('cpf'):
+        idface_id = user.get('cpf')
+        print(f"[Delete Photo] Usando CPF como idface_id: {idface_id}")
+    
+    if idface_id:
+        try:
+            print(f"[Delete Photo] Excluindo foto do IDFace para user_id={idface_id}")
+            result = idface.delete_user_photo(int(idface_id))
+            print(f"[Delete Photo] Resultado: {result}")
+        except Exception as e:
+            print(f"[Delete Photo] Erro ao excluir foto do IDFace: {e}")
+    
+    db.update_user(user_id, photo_path=None, photo_base64=None)
+    
+    return jsonify({"success": True, "message": "Foto excluída"})
 
 @app.route('/api/users/<int:user_id>/photo')
 def get_user_photo(user_id):
@@ -834,26 +1090,23 @@ def sync_user(user_id):
 def sync_pending_users():
     force = request.json.get('force', False) if request.json else False
     print(f"[Sync Pending] ========== INICIANDO SYNC PENDENTES (force={force}) ==========")
+    
     users = db.list_users()
-    print(f"[Sync Pending] Total usuários: {len(users)}")
+    
+    if force:
+        users_to_sync = users
+    else:
+        users_to_sync = [u for u in users if u.get('sync_pending') == 1 or not u.get('idface_id')]
+    
+    print(f"[Sync Pending] Total usuários: {len(users)}, Para sincronizar: {len(users_to_sync)}")
+    
     success_count = 0
     error_count = 0
     
-    for user in users:
-        # Se force=True, sempre sincroniza
+    for user in users_to_sync:
         is_pending = force or user.get('sync_pending') == 1 or not user.get('idface_id')
         
         print(f"[Sync Pending] Processando: {user.get('name')} (ID: {user.get('id')}, sync_pending={user.get('sync_pending')}, idface_id={user.get('idface_id')}, is_pending={is_pending})")
-        
-        if not is_pending:
-            # Verifica se realmente existe no IDFace
-            result = check_user_sync_internal(user['id'])
-            if result.get('synced'):
-                print(f"[Sync Pending] {user.get('name')} confirmado no IDFace")
-                success_count += 1
-            else:
-                print(f"[Sync Pending] {user.get('name')} NÃO existe no IDFace, forçando sync...")
-                is_pending = True
         
         if is_pending:
             sync_result = sync_user_to_idface(user['id'])
@@ -1327,6 +1580,68 @@ def presence_recent():
         "presence": [format_presence_for_response(p) for p in presence]
     })
 
+@app.route('/api/recognitions')
+def get_recognitions():
+    limit = request.args.get('limit', 100, type=int)
+    presence = db.get_all_logs(limit)
+    
+    recognitions = []
+    for p in presence:
+        user_id = p.get('user_id', 0)
+        result = p.get('result', 0)
+        
+        if user_id == 0 or result == 3:
+            recognition = {
+                "user_id": None,
+                "idface_id": None,
+                "name": "Não Reconhecido",
+                "registration": "",
+                "cpf": None,
+                "active": False,
+                "blocked": False,
+                "not_recognized": True,
+                "not_found": True,
+                "timestamp": p.get('timestamp'),
+                "created_at": p.get('created_at'),
+                "event_type": result
+            }
+        elif result == 6:
+            recognition = {
+                "user_id": None,
+                "idface_id": None,
+                "name": "Usuário Bloqueado",
+                "registration": "",
+                "cpf": None,
+                "active": False,
+                "blocked": True,
+                "not_recognized": False,
+                "not_found": True,
+                "timestamp": p.get('timestamp'),
+                "created_at": p.get('created_at'),
+                "event_type": result
+            }
+        else:
+            recognition = {
+                "user_id": p.get('user_id'),
+                "idface_id": p.get('idface_id'),
+                "name": p.get('name', 'Usuário'),
+                "registration": p.get('registration'),
+                "cpf": p.get('cpf'),
+                "active": True,
+                "blocked": False,
+                "not_recognized": False,
+                "not_found": False,
+                "timestamp": p.get('timestamp'),
+                "created_at": p.get('created_at'),
+                "event_type": result
+            }
+        recognitions.append(recognition)
+    
+    return jsonify({
+        "success": True,
+        "recognitions": recognitions
+    })
+
 @app.route('/api/presence/date/<date>')
 def presence_by_date(date):
     presence = db.get_presence_by_date(date)
@@ -1354,8 +1669,9 @@ def webhook_new_user():
     identifier_id = data.get('identifier_id')
     timestamp = data.get('date_time')
     
-    user = db.get_user_by_idface_id(user_id)
-    
+    user = db.get_user_by_cpf(str(user_id))
+    if not user:
+        user = db.get_user_by_idface_id(user_id)
     if not user:
         user = db.get_user_by_registration(str(user_id))
     
@@ -1446,10 +1762,14 @@ def push_server_catchall(subpath):
             for change in object_changes:
                 if change.get('type') == 'inserted':
                     values = change.get('values', {})
-                    log_id = int(values.get('id', 0))
-                    event_type = int(values.get('event', 0))
-                    user_id = int(values.get('user_id', 0))
-                    timestamp = int(values.get('time', 0))
+                    log_id = int(values.get('id', 0)) if values.get('id') else 0
+                    event_type = int(values.get('event', 0)) if values.get('event') else 0
+                    user_id_str = values.get('user_id', '')
+                    try:
+                        user_id = int(user_id_str) if user_id_str else 0
+                    except (ValueError, TypeError):
+                        user_id = 0
+                    timestamp = int(values.get('time', 0)) if values.get('time') else 0
                     
                     dt = datetime.fromtimestamp(timestamp)
                     timestamp_str = dt.isoformat()
@@ -1470,11 +1790,31 @@ def push_server_catchall(subpath):
                     if event_type == 3 or user_id == 0:
                         recognition_data["name"] = "Não Reconhecido"
                         recognition_data["not_recognized"] = True
+                        recognition_data["not_found"] = True
                         recognition_data["blocked"] = False
+                        
+                        db.add_presence_log(
+                            user_id=0,
+                            idface_id=0,
+                            device_id=0,
+                            identifier_type="face",
+                            result=event_type,
+                            timestamp=timestamp
+                        )
                     elif event_type == 6:
                         recognition_data["name"] = f"Usuário Bloqueado"
                         recognition_data["blocked"] = True
                         recognition_data["not_recognized"] = False
+                        recognition_data["not_found"] = True
+                        
+                        db.add_presence_log(
+                            user_id=0,
+                            idface_id=0,
+                            device_id=0,
+                            identifier_type="face",
+                            result=event_type,
+                            timestamp=timestamp
+                        )
                     elif user_id and event_type == 7:
                         user = db.get_user_by_cpf(str(user_id))
                         if not user:
@@ -1663,12 +2003,26 @@ def new_user_identified():
     device_id = data.get('device_id')
     timestamp = data.get('date_time')
     
-    user = db.get_user_by_idface_id(user_id)
+    user = db.get_user_by_cpf(str(user_id))
+    if not user:
+        user = db.get_user_by_idface_id(user_id)
     if not user:
         user = db.get_user_by_registration(str(user_id))
     
     if user:
         is_active = bool(user.get('active', 0)) == 1
+        
+        recognition_data = {
+            "user_id": user['id'],
+            "idface_id": str(user_id),
+            "name": user.get('name'),
+            "registration": user.get('registration'),
+            "cpf": user.get('cpf'),
+            "active": is_active,
+            "blocked": not is_active,
+            "timestamp": timestamp,
+            "created_at": datetime.now().isoformat()
+        }
         
         if is_active:
             db.add_presence_log(
@@ -1687,6 +2041,7 @@ def new_user_identified():
             })
             
             socketio.emit('presence_detected', presence_data, room='admin')
+            socketio.emit('recognition_detected', recognition_data, room='admin')
             
             idface.open_door(0)
             
@@ -1697,11 +2052,28 @@ def new_user_identified():
                 "user_image": True
             })
         else:
+            socketio.emit('recognition_detected', recognition_data, room='admin')
+            
             return jsonify({
                 "result": 6,
                 "display_message": "Não Autorizado",
                 "user_image": False
             })
+    
+    recognition_data = {
+        "user_id": user_id,
+        "name": "Usuário não cadastrado",
+        "registration": None,
+        "cpf": None,
+        "active": False,
+        "blocked": False,
+        "not_found": True,
+        "not_recognized": True,
+        "timestamp": timestamp,
+        "created_at": datetime.now().isoformat()
+    }
+    
+    socketio.emit('recognition_detected', recognition_data, room='admin')
     
     return jsonify({
         "result": 6,
@@ -1750,6 +2122,72 @@ def handle_subscribe(data):
     room = data.get('room', 'admin')
     join_room(room)
     emit('subscribed', {'room': room})
+
+from idface_manager import IDFaceManager
+
+idface_manager = IDFaceManager(db)
+
+@app.route('/api/devices', methods=['GET'])
+def list_devices():
+    devices = db.list_devices()
+    return jsonify({"success": True, "devices": devices})
+
+@app.route('/api/devices', methods=['POST'])
+def add_device():
+    data = request.json
+    device_id = db.add_device(
+        name=data.get('name'),
+        ip=data.get('ip'),
+        port=data.get('port', 80),
+        user=data.get('user'),
+        password=data.get('password')
+    )
+    return jsonify({"success": True, "device_id": device_id})
+
+@app.route('/api/devices/<int:device_id>', methods=['PUT'])
+def update_device(device_id):
+    data = request.json
+    db.update_device(
+        device_id,
+        name=data.get('name'),
+        ip=data.get('ip'),
+        port=data.get('port'),
+        user=data.get('user'),
+        password=data.get('password'),
+        active=data.get('active')
+    )
+    idface_manager.clear_cache(device_id)
+    return jsonify({"success": True})
+
+@app.route('/api/devices/<int:device_id>', methods=['DELETE'])
+def delete_device(device_id):
+    db.delete_device(device_id)
+    idface_manager.clear_cache(device_id)
+    return jsonify({"success": True})
+
+@app.route('/api/devices/<int:device_id>/test', methods=['POST'])
+def test_device(device_id):
+    device = db.get_device(device_id)
+    if not device:
+        return jsonify({"success": False, "error": "Dispositivo não encontrado"}), 404
+    
+    client = idface_manager.get_client(device_id)
+    if not client:
+        return jsonify({"success": False, "error": "Não foi possível conectar ao dispositivo"})
+    
+    result = client.test_connection()
+    return jsonify(result)
+
+@app.route('/api/devices/test-connection', methods=['POST'])
+def test_new_device():
+    data = request.json
+    result = idface_manager.test_connection(
+        ip=data.get('ip'),
+        port=data.get('port', 80),
+        user=data.get('user'),
+        password=data.get('password')
+    )
+    return jsonify(result)
 
 if __name__ == '__main__':
     import os

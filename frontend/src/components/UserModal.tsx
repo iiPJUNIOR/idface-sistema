@@ -1,5 +1,5 @@
-import React from 'react';
-import { Camera, X } from 'lucide-react';
+import React, { useRef } from 'react';
+import { Camera, X, Upload } from 'lucide-react';
 
 interface FormData {
   name: string;
@@ -19,6 +19,23 @@ interface UserModalProps {
 }
 
 export function UserModal({ editingUser, formData, setFormData, setShowCamera, closeModal, handleSubmit, loading }: UserModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        setFormData((prev: FormData) => ({ ...prev, photo: base64 }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-slate-900 rounded-3xl w-full max-w-md max-h-[90dvh] flex flex-col border border-white/10 shadow-2xl relative animate-float-up">
@@ -39,8 +56,7 @@ export function UserModal({ editingUser, formData, setFormData, setShowCamera, c
           <div className="p-6 sm:p-8 space-y-5 sm:space-y-6 overflow-y-auto min-h-0">
             <div className="flex justify-center mb-2">
               <div
-                onClick={() => setShowCamera(true)}
-                className="w-32 h-32 bg-slate-800/50 rounded-3xl border-2 border-dashed border-emerald-500/30 hover:border-emerald-500 cursor-pointer flex flex-col items-center justify-center transition-all duration-300 group shadow-inner relative overflow-hidden"
+                className="w-32 h-32 bg-slate-800/50 rounded-3xl border-2 border-dashed border-emerald-500/30 cursor-pointer flex flex-col items-center justify-center transition-all duration-300 group shadow-inner relative overflow-hidden"
               >
                 {formData.photo ? (
                   <>
@@ -60,11 +76,37 @@ export function UserModal({ editingUser, formData, setFormData, setShowCamera, c
                       <Camera className={`w-6 h-6 ${!editingUser && !formData.photo ? 'text-rose-400' : 'text-emerald-400'}`} />
                     </div>
                     <span className={`text-xs font-medium group-hover:text-emerald-300 ${!editingUser && !formData.photo ? 'text-rose-400' : 'text-slate-400'}`}>
-                      Capturar Biometria *
+                      Adicionar Foto *
                     </span>
                   </>
                 )}
               </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept="image/*"
+                className="hidden"
+              />
+            </div>
+
+            <div className="flex gap-3 mb-4">
+              <button
+                type="button"
+                onClick={() => setShowCamera(true)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-xl text-emerald-400 font-medium text-sm transition-colors"
+              >
+                <Camera className="w-4 h-4" />
+                Webcam
+              </button>
+              <button
+                type="button"
+                onClick={triggerFileInput}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-xl text-blue-400 font-medium text-sm transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Upload
+              </button>
             </div>
 
             <div className="space-y-4">

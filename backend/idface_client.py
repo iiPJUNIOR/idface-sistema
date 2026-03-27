@@ -142,11 +142,125 @@ class IDFaceClient:
             print(f"[IDFace] Erro ao criar usuário: {e}")
             return {"success": False, "error": str(e)}
     
-    def upload_face_photo(self, user_id: int, image_base64: str) -> Dict[str, Any]:
-        url = f"{self._make_url('/user_set_image.fcgi')}?{self._get_session_param()}&user_id={user_id}&match=0&timestamp={int(time.time())}"
+    def update_user(self, user_id: int, name: str = None, registration: str = None) -> Dict[str, Any]:
+        """Atualiza um usuário existente no IDFace"""
+        url = f"{self._make_url('/modify_objects.fcgi')}?{self._get_session_param()}"
+        
+        values = {}
+        if name is not None:
+            values["name"] = name
+        if registration is not None:
+            values["registration"] = registration
+        
+        if not values:
+            print(f"[IDFace] update_user: Nenhum valor para atualizar")
+            return {"success": False, "error": "Nenhum valor para atualizar"}
+        
+        payload = {
+            "object": "users",
+            "values": values,
+            "where": {
+                "users": {
+                    "id": user_id
+                }
+            }
+        }
         
         try:
-            response = requests.post(url, data=image_base64.encode(), headers={"Content-Type": "image/jpeg"}, timeout=30)
+            response = requests.post(url, json=payload, timeout=10)
+            data = response.json()
+            
+            print(f"[IDFace] update_user({user_id}): {data}")
+            
+            if data.get("success"):
+                print(f"[IDFace] Usuário {user_id} atualizado com sucesso")
+                return {"success": True}
+            else:
+                print(f"[IDFace] Falha ao atualizar usuário: {data}")
+                return {"success": False, "error": data}
+                
+        except Exception as e:
+            print(f"[IDFace] Erro ao atualizar usuário: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def create_or_update_user(self, user_id: int, name: str, registration: str) -> Dict[str, Any]:
+        """Cria ou atualiza usuário no IDFace (upsert)"""
+        url = f"{self._make_url('/create_or_modify_objects.fcgi')}?{self._get_session_param()}"
+        
+        values = {
+            "id": user_id,
+            "name": name,
+            "registration": registration
+        }
+        
+        payload = {
+            "object": "users",
+            "values": [values]
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            data = response.json()
+            
+            print(f"[IDFace] create_or_update_user({user_id}): {data}")
+            
+            if data.get("ids"):
+                print(f"[IDFace] Usuário {user_id} criado/atualizado com sucesso")
+                return {"success": True, "user_id": user_id}
+            else:
+                print(f"[IDFace] Falha ao criar/atualizar usuário: {data}")
+                return {"success": False, "error": data}
+                
+        except Exception as e:
+            print(f"[IDFace] Erro ao criar/atualizar usuário: {e}")
+            return {"success": False, "error": str(e)}
+                
+        except Exception as e:
+            print(f"[IDFace] Erro ao criar usuário: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def delete_user_photo(self, user_id: int) -> Dict[str, Any]:
+        print(f"[IDFace] Tentando excluir foto do usuário {user_id}...")
+        
+        url = f"{self._make_url('/user_destroy_image.fcgi')}?{self._get_session_param()}"
+        
+        payload = {
+            "user_ids": [user_id]
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=30)
+            data = response.json()
+            
+            print(f"[IDFace] delete_user_photo response: {data}")
+            
+            if data.get("success"):
+                print(f"[IDFace] Foto excluída com sucesso")
+                return {"success": True}
+            else:
+                print(f"[IDFace] Erro ao excluir foto: {data}")
+                return {"success": False, "error": data}
+        except Exception as e:
+            print(f"[IDFace] Erro ao excluir foto: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def upload_face_photo(self, user_id: int, image_base64: str) -> Dict[str, Any]:
+        url = f"{self._make_url('/user_set_image.fcgi')}?{self._get_session_param()}&user_id={user_id}&match=1&timestamp={int(time.time())}"
+        
+        try:
+            image_data = image_base64.encode() if isinstance(image_base64, str) else image_base64
+            
+            if len(image_data) < 1000:
+                print(f"[IDFace] ERRO: Dados da imagem muito pequenos ({len(image_data)} bytes)")
+                return {"success": False, "error": "Imagem muito pequena"}
+            
+            response = requests.post(url, data=image_data, headers={"Content-Type": "image/jpeg"}, timeout=30)
+            print(f"[IDFace] Upload response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"[IDFace] Erro HTTP: {response.status_code} - {response.text}")
+                return {"success": False, "error": f"HTTP {response.status_code}"}
+            
             data = response.json()
             
             if data.get("success"):
@@ -161,7 +275,7 @@ class IDFaceClient:
             return {"success": False, "error": str(e)}
     
     def upload_face_photo_from_file(self, user_id: int, image_path: str) -> Dict[str, Any]:
-        url = f"{self._make_url('/user_set_image.fcgi')}?session={self.session}&user_id={user_id}&match=1&timestamp={int(time.time())}"
+        url = f"{self._make_url('/user_set_image.fcgi')}?{self._get_session_param()}&user_id={user_id}&match=1&timestamp={int(time.time())}"
         
         try:
             with open(image_path, "rb") as f:
@@ -183,50 +297,66 @@ class IDFaceClient:
             return {"success": False, "error": str(e)}
     
     def delete_user(self, user_id: int) -> Dict[str, Any]:
+        print(f"[IDFace] delete_user({user_id}) - Tentando excluir usuário específico...")
+        
         url = f"{self._make_url('/destroy_objects.fcgi')}?{self._get_session_param()}"
         
+        # Usar "where" com o ID específico conforme documentação
         payload = {
             "object": "users",
-            "ids": [user_id]
+            "where": {
+                "users": {
+                    "id": user_id
+                }
+            }
         }
+        
+        print(f"[IDFace] delete_user payload: {payload}")
         
         try:
             response = requests.post(url, json=payload, timeout=10)
             data = response.json()
             
-            if data.get("success") or data.get("ids"):
+            changes = data.get("changes", 0)
+            
+            print(f"[IDFace] delete_user({user_id}) - response: {data}, changes: {changes}")
+            
+            if changes == 1:
                 print(f"[IDFace] Usuário {user_id} removido com sucesso")
-                return {"success": True}
+                return {"success": True, "changes": changes}
+            elif changes == 0:
+                print(f"[IDFace] Nenhum usuário encontrado com ID {user_id}")
+                return {"success": False, "error": "Usuário não encontrado", "changes": changes}
             else:
-                print(f"[IDFace] Erro ao remover: {data}")
-                return {"success": False, "error": data}
+                print(f"[IDFace] ALERTA: Exclusão afetou {changes} usuários! Esperado: 1")
+                return {"success": False, "error": f"Exclusão suspeita: {changes} afetados", "changes": changes}
                 
         except Exception as e:
             print(f"[IDFace] Erro ao remover usuário: {e}")
             return {"success": False, "error": str(e)}
     
     def delete_user_alternative(self, registration: str) -> Dict[str, Any]:
-        url = f"{self._make_url('/destroy_objects.fcgi')}?{self._get_session_param()}"
+        # Primeiro, encontrar o usuário pela registration
+        all_users = self.list_users()
         
-        payload = {
-            "object": "users",
-            "where": [{"field": "registration", "value": registration}]
-        }
+        # Procurar usuário com a registration exata
+        target_user = None
+        for u in all_users:
+            if str(u.get('registration', '')).strip() == str(registration).strip():
+                target_user = u
+                break
         
-        try:
-            response = requests.post(url, json=payload, timeout=10)
-            data = response.json()
-            
-            if data.get("changes", 0) > 0:
-                print(f"[IDFace] Usuário com registration {registration} removido")
-                return {"success": True}
-            else:
-                print(f"[IDFace] Nenhum usuário encontrado com registration {registration}")
-                return {"success": False, "error": data}
-                
-        except Exception as e:
-            print(f"[IDFace] Erro ao remover usuário: {e}")
-            return {"success": False, "error": str(e)}
+        if not target_user:
+            print(f"[IDFace] delete_user_alternative({registration}) - Usuário não encontrado")
+            return {"success": False, "error": "Usuário não encontrado", "changes": 0}
+        
+        user_id = target_user.get('id')
+        user_name = target_user.get('name')
+        
+        print(f"[IDFace] delete_user_alternative({registration}) - Encontrado: id={user_id}, name={user_name}")
+        
+        # Agora excluir pelo ID (mais seguro)
+        return self.delete_user(user_id)
     
     def set_user_status(self, user_id: int, active: bool) -> Dict[str, Any]:
         url = f"{self._make_url('/set_objects.fcgi')}?{self._get_session_param()}"
